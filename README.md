@@ -1,2 +1,5 @@
 # nf-carafe-ai-ms
-Nextflow workflow for running Carafe AI spectral library generation
+Source code for the Carafe workflow
+
+## More Information
+For more information see the documentation at https://nf-carafe-ai-ms.readthedocs.io/
