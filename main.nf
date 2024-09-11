@@ -24,8 +24,8 @@ PANORAMA_URL = 'https://panoramaweb.org'
 //
 workflow {
 
-    if(!params.diann_fasta_file) {
-        error "`diann_fasta_file` is a required parameter."
+    if(!params.carafe_fasta_file) {
+        error "`carafe_fasta_file` is a required parameter."
     }
     if(!params.peptide_results_file) {
         if(!params.spectra_dir) {
@@ -53,8 +53,8 @@ workflow {
     get_input_files(aws_secret_id)   // get input files
 
     // set up some convenience variables
+    carafe_fasta_file = get_input_files.out.carafe_fasta_file
     diann_fasta_file = get_input_files.out.diann_fasta_file
-    carafe_fasta_file = get_input_files.out.diann_fasta_file
 
     if(!params.peptide_results_file) {
         get_mzmls(params.spectra_dir, params.spectra_glob, aws_secret_id)  // get wide windows mzmls
@@ -62,7 +62,7 @@ workflow {
 
         diann_search(
             wide_mzml_ch,
-            diann_fasta_file
+            params.diann_fasta_file ? diann_fasta_file : carafe_fasta_file
         )
         diann_version = diann_search.out.diann_version
         peptide_report_file = diann_search.out.precursor_tsv
@@ -73,7 +73,7 @@ workflow {
     }
 
     carafe(
-        params.carafe_fasta_file ? carafe_fasta_file : diann_fasta_file,
+        carafe_fasta_file,
         peptide_report_file,
         params.carafe_cli_options ? params.carafe_cli_options : ''
     )

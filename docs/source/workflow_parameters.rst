@@ -64,7 +64,7 @@ The ``params`` Section
      - Command line options to pass to Carafe. The default is to not pass any command line option and use Carafe's defaults, see https://github.com/Noble-Lab/Carafe for more details.
    * - 
      - ``diann_fasta_file``
-     - The FASTA file used by DIA-NN.
+     - The FASTA file used by DIA-NN. If not set ``carafe_fasta_file`` will be used. Default: not set.
    * -
      - ``diann_params``
      - The command line parameters passed to DIA-NN. Default: ``'--unimod4 --qvalue 0.01 --cut \'K*,R*,!*P\' --reanalyse --smart-profiling'``
