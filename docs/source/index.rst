@@ -1,9 +1,14 @@
 ===================================
-Skyline DIA Nextflow Documentation
+Carafe Nextflow Documentation
 ===================================
-This workflow is designed to go from RAW files to a Skyline document with search and quantification
-results. These results may be optionally uploaded to PanoramaWeb/ProteomeXchange. It makes use of
-either DIA-NN or EncyclopeDIA to perform the search.
+This workflow is designed to go from RAW files to an AI-enhanced spectral library using
+the Carafe tool for experiment-specific in silico spectral library generation for DIA data
+analysis. See https://github.com/Noble-Lab/Carafe for more information.
+
+This workflow supports starting with a RAW and FASTA file and will run msconvert and DIA-NN
+to generate a peptide report for input to Carafe; or you may start with a peptide report
+previously generated with DIA-NN to skip running DIA-NN. See :doc:`workflow_parameters` for
+more information.
 
 Please use the links below to navigate to pages describing how to install and run the workflow,
 how to retrieve results, and how to set up AWS Batch to run the workflow in the cloud.

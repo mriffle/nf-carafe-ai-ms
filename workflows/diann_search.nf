@@ -23,7 +23,7 @@ workflow diann_search {
         diann_results = DIANN_SEARCH_LIB_FREE (
             ms_file_ch.collect(),
             fasta,
-            params.diann.params
+            params.diann_params
         )
 
         diann_version = DIANN_SEARCH_LIB_FREE.out.version

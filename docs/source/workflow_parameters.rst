@@ -4,7 +4,7 @@ Workflow Parameters
 
 The workflow parameters should be included in a configuration file, an example
 of which can be found at
-https://raw.githubusercontent.com/mriffle/nf-skyline-dia-ms/main/resources/pipeline.config
+https://raw.githubusercontent.com/mriffle/nf-carafe-ai-ms/main/resources/pipeline.config
 
 The parameters in this file should be changed to indicate the locations of your data, the
 options you'd like to use for the software included in the workflow, and the capabilities and
@@ -56,33 +56,27 @@ The ``params`` Section
    * - Req?
      - Parameter Name
      - Description
-   * -
-     - ``spectral_library``
-     - That path to the spectral library to use. May be a ``dlib``, ``elib``, ``blib``, ``speclib`` (DIA-NN), ``tsv`` (DIA-NN), or other formats supported by EncyclopeDIA or DIA-NN. This parameter is required for EncyclopeDIA. If omitted when using DIA-NN, DIA-NN will be run in library-free mode.
    * - ✓
-     - ``fasta``
-     - The path to the background FASTA file to use.
-   * - ✓
-     - ``quant_spectra_dir``
-     - The path to the directory containing the raw data to be quantified. If using narrow window DIA and GPF to generated a chromatogram library this is the location of the wide-window data to be searched using the chromatogram library.
+     - ``carafe_fasta_file``
+     - FASTA file used by Carafe to generate final spectral library.
+   * - 
+     - ``carafe_cli_options``
+     - Command line options to pass to Carafe. The default is to not pass any command line option and use Carafe's defaults, see https://github.com/Noble-Lab/Carafe for more details.
+   * - 
+     - ``diann_fasta_file``
+     - The FASTA file used by DIA-NN.
    * -
-     - ``quant_spectra_glob``
+     - ``diann_params``
+     - The command line parameters passed to DIA-NN. Default: ``'--unimod4 --qvalue 0.01 --cut \'K*,R*,!*P\' --reanalyse --smart-profiling'``
+   * -
+     - ``spectra_dir``
+     - This is the path to the directory containing the raw data to be searched with DIA-NN. 
+   * -
+     - ``spectra_glob``
      - Which files in this directory to use. Default: ``*.raw``
    * -
-     - ``chromatogram_library_spectra_dir``
-     - If you are creating a chromatogram library using GPF and narrow window DIA, this is the path to the directory containing the narrow-window raw data.
-   * -
-     - ``chromatogram_library_spectra_glob``
-     - Which files in this directory to use. Default: ``*.raw``
-   * -
-     - ``search_engine``
-     - Must be set to either ``'encyclopedia'`` or ``'diann'``. If set to ``'diann'``, ``chromatogram_library_spectra_dir``, ``chromatogram_library_spectra_glob``, and EncyclopeDIA-specific parameters will be ignored. Default: ``'encyclopedia'``.
-   * -
-     - ``skyline.skip``
-     - If set to ``true``, will skip the creation of a Skyline document. Default: ``false``.
-   * -
-     - ``skyline.document_name``
-     - The base of the file name of the generated Skyline document. If set to ``'human_dia'``, the output file name would be ``human_dia.sky.zip``. Note: If importing into PanoramaWeb, this is also the name that appears in the list of imported Skyline documents on the project page. Default: ``final``.
+     - ``peptide_results_file``
+     - The path to a .TSV file output by DIA-NN containing peptide identifications. If this parameter is set, the DIA-NN search will be skipped and this file used. Default: none (run DIA-NN).
    * -
      - ``msconvert.do_demultiplex``
      - If starting with raw files, this is the value used by ``msconvert`` for the ``do_demultiplex`` parameter. Default: ``true``.
@@ -90,105 +84,8 @@ The ``params`` Section
      - ``msconvert.do_simasspectra``
      - If starting with raw files, this is the value used by ``msconvert`` for the ``do_simasspectra`` parameter. Default: ``true``.
    * -
-     - ``encyclopedia.chromatogram.params``
-     - If you are generating a chromatogram library for quantification, this is the command line options passed to EncyclopeDIA during the chromatogram generation step. Default: ``'-enableAdvancedOptions -v2scoring'`` If you do not wish to pass any options to EncyclopeDIA, this must be set to ``''``.
-   * -
-     - ``encyclopedia.quant.params``
-     - The command line options passed to EncyclopeDIA during the quantification step. Default: ``'-enableAdvancedOptions -v2scoring'`` If you do not wish to pass any options to EncyclopeDIA, this must be set to ``''``.
-   * -
-     - ``encyclopedia.save_output``
-     - EncyclopeDIA generates many intermediate files that are subsequently processed by the workflow to generate the final results. These intermediate files may be large. If this is set to ``'true'``, these intermediate files will be saved locally in your ``results`` directory. Default: ``'false'``.
-   * -
-     - ``diann.params``
-     - The parameters passed to DIA-NN when it is run. Default: ``'--unimod4 --qvalue 0.01 --cut \'K*,R*,!*P\' --reanalyse --smart-profiling'``
-   * -
-     - ``panorama.upload``
-     - Whether or not to upload results to PanoramaWeb Default: ``false``.
-   * -
-     - ``panorama.upload_url``
-     - The WebDAV URL of a directory in PanoramaWeb to which to upload the results. Note that ``panorama.upload`` must be set to ``true`` to upload results.
-   * -
-     - ``panorama.import_skyline``
-     - If set to ``true``, the generated Skyline document will be imported into PanoramaWeb's relational database for inline visualization. The import will appear in the parent folder for the ``panorama.upload_url`` parameter, and will have the named used for the ``skyline_document_name`` parameter. Default: ``false``. Note: ``panorama_upload`` must be set to ``true`` and ``skip_skyline`` must be set to ``false`` to use this feature.
-   * -
-     - ``skyline.skyr_file``
-     - Path(s) (local file system or Panorama WebDAV) to a ``.skyr`` file, which is a Skyline report template. Any reports specified in the ``.skyr`` file will be run automatically as the last step of the workflow and the results saved in your ``results`` directory and (if requested) uploaded to Panorama. The report template(s) can be a single string, or for multiple ``.skyr`` files can be given as a list of strings.
-       For example: ``'/path/to/report.skyr'`` for a single file, or
-       ``['/path/to/report_1.skyr', '/path/to/report_2.skyr']`` for multiple files.
-   * -
-     - ``skyline.template_file``
-     - The Skyline template file used to generate the final Skyline file. By default a
-       pre-made Skyline template file suitable for EncyclopeDIA or DIA-NN will be used. Specify a file
-       location here to use your own template. Note: The filenames in the .zip file must match
-       the name of the zip file, itself. E.g., ``my-skyline-template.zip`` must contain ``my-skyline-template.sky``.
-   * -
-     - ``skyline.protein_parsimony``
-     - If ``true``, protein parsimony is performed in Skyline. If ``false`` the protein assignments given by the search engine are used as protein groups. Default is ``false``.
-   * -
-     - ``skyline.group_by_gene``
-     - If ``true``, when protein parsimony is performed in Skyline protein groups are formed by gene instead of by protein. Default is ``false``.
-   * -
-     - ``skyline.minimize``
-     - If ``true``, the size of the final Skyline document is minimized. Chromatograms for isotopic peaks that are not in the document are removed from the ``skyd`` file and a minimal spectral library is generated by removing spectra that are not in the document. Default is ``false``.
-   * -
-     - ``skyline.use_hardlinks``
-     - On systems that allow it, setting this to ``true`` allows the use of cached Skyline workflow steps and may improve performance on subsequent runs. Note: some systems do not allow this, which will result in an error. Default: ``false``.
-   * -
-     - ``replicate_metadata``
-     - Metadata annotations for each ``raw`` or ``mzML`` file. Can be in ``tsv`` or ``csv`` format. See the :ref:`replicate_metadata` section for details of how the file should be formatted. If a metadata file is specified it will be used to add annotations to the final Skyline document and can be used to color PCA plots in the QC report by specifying the ``qc_report.color_vars`` parameter. If this parameter is set to ``null`` the skyline document annotation step is skipped.
-   * -
-     - ``qc_report.skip``
-     - If set to ``true``, will skip the creation of a the QC report. Default: ``true``.
-   * -
-     - ``qc_report.normalization_method``
-     - Normalization method to use for plots in QC report. Available options are ``DirectLFQ`` and ``median``.
-       Default is ``median``
-   * -
-     - ``qc_report.standard_proteins``
-     - List of protein names in Skyline document to plot retention times for.
-
-       For example: ``['iRT', 'sp|P00924|ENO1_YEAST']``
-
-       If ``null``, the standard protein retention time plot is skipped. Default is ``null``
-   * -
-     - ``qc_report.color_vars``
-     - List of metadata variables to color PCA plots by.
-
-       For example: ``['sample_type', 'strain']``
-
-       If ``null``, only a single PCA plot colored by file acquisition order is generated. Default is ``null``
-   * -
-     - ``qc_report.export_tables``
-     - Export tsv files containing normalized precursor and protein quantities? Default is ``false``
-   * -
      - ``email``
      - The email address to which a notification should be sent upon workflow completion. If no email is specified, no email will be sent. To send email, you must configure mail server settings (see below).
-
-
-.. _replicate_metadata:
-
-Providing replicate metadata
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-The ``replicate_metadata`` file can be a ``tsv`` or ``csv`` file where the first column has the header ``Replicate``. The values under the replicate column should match exactly the names of the mzML or raw files which will be in the Skyline document. The headers of subsequent columns are the names of each metadata variable and the values in each column are the annotations corresponding to each replicate.
-
-.. list-table:: Example replicate metadata file format
-   :widths: 20 20 20
-   :header-rows: 1
-
-   * - Replicate
-     - sample_type
-     - strain
-   * - replicate_1.raw
-     - test
-     - BALB/cJ
-   * - replicate_2.raw
-     - test
-     - C57BL/6J
-   * - replicate_3.raw
-     - IBQC
-     - Pool
-
 
 The ``profiles`` Section
 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -207,7 +104,7 @@ The example configuration file includes this ``profiles`` section:
             params.max_cpus = 4
             params.max_time = '240.h'
 
-            params.mzml_cache_directory = '/data/mass_spec/nextflow/nf-skyline-dia-ms/mzml_cache'
+            params.mzml_cache_directory = '/data/mass_spec/nextflow/nf-carafe-ai-ms/mzml_cache'
             params.panorama_cache_directory = '/data/mass_spec/nextflow/panorama/raw_cache'
         }
     }
