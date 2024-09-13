@@ -61,7 +61,7 @@ The ``params`` Section
      - FASTA file used by Carafe to generate final spectral library.
    * - 
      - ``carafe_cli_options``
-     - Command line options to pass to Carafe. The default is to not pass any command line option and use Carafe's defaults, see https://github.com/Noble-Lab/Carafe for more details.
+     - Command line options to pass to Carafe. Note: Do not set the ``-db``, ``-i``, ``-o`` parameters, this is handled by the workflow. The default is to not pass any command line option and use Carafe's defaults, see https://github.com/Noble-Lab/Carafe for more details.
    * - 
      - ``diann_fasta_file``
      - The FASTA file used by DIA-NN. If not set ``carafe_fasta_file`` will be used. Default: not set.
