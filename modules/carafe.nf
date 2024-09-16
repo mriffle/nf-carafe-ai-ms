@@ -9,9 +9,11 @@ process CARAFE {
     container params.images.carafe
     
     input:
+        path mzml_file
         path fasta_file
         path peptide_results_file
         val carafe_params
+        val output_format
     
     output:
         path("*.stderr"), emit: stderr
@@ -20,10 +22,16 @@ process CARAFE {
         path("carafe_version.txt"), emit: version
 
     script:
+
+        lf_type_param = output_format == 'diann' ? 'diann' : 'encyclopedia'
+
         """
         ${exec_java_command(task.memory)} \\
+        -ms "${mzml_file}" \\
         -db "${fasta_file}" \\
         -i "${peptide_results_file}" \\
+        -se "DIA-NN" \\
+        -lf_type ${lf_type_param} \\
         -device cpu \\
         ${carafe_params} \\
         > >(tee "carafe.stdout") 2> >(tee "carafe.stderr" >&2)

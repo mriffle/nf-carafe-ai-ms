@@ -59,18 +59,21 @@ The ``params`` Section
    * - ✓
      - ``carafe_fasta_file``
      - FASTA file used by Carafe to generate final spectral library.
+   * - ✓
+     - ``spectra_file``
+     - The raw or mzML file to process. 
+   * - 
+     - ``output_format``
+     - The final output format of the generated spectral library. Must be one of ``'diann'`` or ``'encyclopedia'``. Default: ``'diann'``
    * - 
      - ``carafe_cli_options``
-     - Command line options to pass to Carafe. Note: Do not set the ``-db``, ``-i``, ``-o`` parameters, this is handled by the workflow. The default is to not pass any command line option and use Carafe's defaults, see https://github.com/Noble-Lab/Carafe for more details.
+     - Command line options to pass to Carafe. Note: Do not set the ``se``, ``lf_type``, ``-db``, ``-i``, ``-o`` parameters, these are handled by the workflow. The default is to not pass any command line option and use Carafe's defaults, see https://github.com/Noble-Lab/Carafe for more details.
    * - 
      - ``diann_fasta_file``
      - The FASTA file used by DIA-NN. If not set ``carafe_fasta_file`` will be used. Default: not set.
    * -
      - ``diann_params``
      - The command line parameters passed to DIA-NN. Default: ``'--unimod4 --qvalue 0.01 --cut \'K*,R*,!*P\' --reanalyse --smart-profiling'``
-   * -
-     - ``spectra_dir``
-     - This is the path to the directory containing the raw data to be searched with DIA-NN. 
    * -
      - ``spectra_glob``
      - Which files in this directory to use. Default: ``*.raw``

@@ -12,6 +12,7 @@ include { save_run_details } from "./workflows/save_run_details"
 // modules
 include { GET_AWS_USER_ID } from "./modules/aws"
 include { BUILD_AWS_SECRETS } from "./modules/aws"
+include { ENCYCLOPEDIA_TSV_TO_DLIB } from "./modules/encyclopedia"
 
 // useful functions and variables
 include { param_to_list } from "./workflows/get_input_files"
@@ -24,16 +25,16 @@ PANORAMA_URL = 'https://panoramaweb.org'
 //
 workflow {
 
+    if(!params.spectra_file) {
+        error "`spectra_file` is a required parameter."
+    }
+
     if(!params.carafe_fasta_file) {
         error "`carafe_fasta_file` is a required parameter."
     }
-    if(!params.peptide_results_file) {
-        if(!params.spectra_dir) {
-            error "`spectra_dir` is a required parameter."
-        }
-        if(!params.spectra_dir) {
-            error "`spectra_dir` is a required parameter."
-        }
+
+    if(params.output_format != 'diann' && params.output_format != 'encyclopedia') {
+        error "`output_format` must be one of 'diann' or 'encyclopedia'"
     }
 
     // version file channles
@@ -51,32 +52,39 @@ workflow {
     }
 
     get_input_files(aws_secret_id)   // get input files
+    get_mzmls(params.spectra_file, aws_secret_id)  // get mzmls
 
     // set up some convenience variables
     carafe_fasta_file = get_input_files.out.carafe_fasta_file
     diann_fasta_file = get_input_files.out.diann_fasta_file
+    mzml_file_ch = get_mzmls.out.mzml_ch
 
     if(!params.peptide_results_file) {
-        get_mzmls(params.spectra_dir, params.spectra_glob, aws_secret_id)  // get wide windows mzmls
-        wide_mzml_ch = get_mzmls.out.mzml_ch
-
         diann_search(
-            wide_mzml_ch,
+            mzml_file_ch,
             params.diann_fasta_file ? diann_fasta_file : carafe_fasta_file
         )
         diann_version = diann_search.out.diann_version
         peptide_report_file = diann_search.out.precursor_tsv
     } else {
         diann_version = Channel.empty()
-        wide_mzml_ch = Channel.empty()
         peptide_report_file = get_input_files.out.peptide_report
     }
 
     carafe(
+        mzml_file_ch,
         carafe_fasta_file,
         peptide_report_file,
-        params.carafe_cli_options ? params.carafe_cli_options : ''
+        params.carafe_cli_options ? params.carafe_cli_options : '',
+        params.output_format
     )
+
+    if(params.output_format == 'encyclopedia') {
+        ENCYCLOPEDIA_TSV_TO_DLIB(
+            carafe_fasta_file,
+            carafe.out.speclib_tsv
+        )
+    }
 
     carafe_version = carafe.out.carafe_version
     version_files = carafe_version.concat(diann_version).splitText()
@@ -107,7 +115,7 @@ def is_panorama_used() {
     return (params.diann_fasta_file && params.diann_fasta_file.startsWith(PANORAMA_URL)) ||
            (params.carafe_fasta_file && params.carafe_fasta_file.startsWith(PANORAMA_URL)) ||
            (params.peptide_results_file && params.peptide_results_file.startsWith(PANORAMA_URL)) ||
-           (params.spectra_dir && any_entry_is_panorama(params.spectra_dir))
+           (params.spectra_file && params.spectra_file.startsWith(PANORAMA_URL))
 
 }
 
