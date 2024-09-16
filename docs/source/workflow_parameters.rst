@@ -75,9 +75,6 @@ The ``params`` Section
      - ``diann_params``
      - The command line parameters passed to DIA-NN. Default: ``'--unimod4 --qvalue 0.01 --cut \'K*,R*,!*P\' --reanalyse --smart-profiling'``
    * -
-     - ``spectra_glob``
-     - Which files in this directory to use. Default: ``*.raw``
-   * -
      - ``peptide_results_file``
      - The path to a .TSV file output by DIA-NN containing peptide identifications. If this parameter is set, the DIA-NN search will be skipped and this file used. Default: none (run DIA-NN).
    * -
