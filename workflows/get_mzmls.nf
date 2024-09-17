@@ -24,7 +24,7 @@ workflow get_mzmls {
 
         if(!(spectra_file.toLowerCase().endsWith("mzml"))) {
             mzml_ch = MSCONVERT(
-                PANORAMA_GET_RAW_FILE.out.panorama_file,
+                raw_ch,
                 params.msconvert.do_demultiplex,
                 params.msconvert.do_simasspectra
             )
