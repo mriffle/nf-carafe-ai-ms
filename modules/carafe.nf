@@ -23,9 +23,20 @@ process CARAFE {
 
     script:
 
+        apptainer_cmds = ''
+        if (workflow.containerEngine == 'singularity' || workflow.containerEngine == 'apptainer') {
+            // Running with Apptainer/Singularity
+            apptainer_cmds = """
+                source /opt/conda/etc/profile.d/conda.sh
+                conda activate carafe
+            """
+        }
+
         lf_type_param = output_format == 'diann' ? 'diann' : 'encyclopedia'
 
         """
+        ${apptainer_cmds}
+
         ${exec_java_command(task.memory)} \\
         -ms "${mzml_file}" \\
         -db "${fasta_file}" \\
