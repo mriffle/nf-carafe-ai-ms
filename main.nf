@@ -97,9 +97,8 @@ workflow {
     //     input_files = input_files.concat(carafe_fasta_file.map{ it -> ['Carafe FASTA file', it.name] })
     // }
     input_files = Channel.empty()
-
-    save_run_details(input_files.collect(), version_files.collect())
-    run_details_file = save_run_details.out.run_details
+    //save_run_details(input_files.collect(), version_files.collect())
+    //run_details_file = save_run_details.out.run_details
 
 }
 
