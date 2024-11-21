@@ -110,12 +110,14 @@ def any_entry_is_panorama(param) {
 
 // return true if panoramaweb will be accessed by this Nextflow run
 def is_panorama_used() {
+    return (params.diann_fasta_file     && panorama_auth_required_for_url(params.diann_fasta_file)) ||
+           (params.carafe_fasta_file    && panorama_auth_required_for_url(params.carafe_fasta_file)) ||
+           (params.peptide_results_file && panorama_auth_required_for_url(params.peptide_results_file)) ||
+           (params.spectra_file         && panorama_auth_required_for_url(params.spectra_file))
+}
 
-    return (params.diann_fasta_file && params.diann_fasta_file.startsWith(PANORAMA_URL)) ||
-           (params.carafe_fasta_file && params.carafe_fasta_file.startsWith(PANORAMA_URL)) ||
-           (params.peptide_results_file && params.peptide_results_file.startsWith(PANORAMA_URL)) ||
-           (params.spectra_file && params.spectra_file.startsWith(PANORAMA_URL))
-
+def panorama_auth_required_for_url(url) {
+    return url.startsWith(PANORAMA_URL) && !url.contains("/_webdav/Panorama%20Public/")
 }
 
 //

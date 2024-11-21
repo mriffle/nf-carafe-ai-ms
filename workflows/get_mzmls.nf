@@ -15,7 +15,7 @@ workflow get_mzmls {
     main:
 
         raw_ch = null
-        if(spectra_file.startsWith(PANORAMA_URL)) {
+        if(panorama_auth_required_for_url(spectra_file)) {
             PANORAMA_GET_RAW_FILE(spectra_file, aws_secret_id)
             raw_ch = PANORAMA_GET_RAW_FILE.out.panorama_file
         } else {
@@ -31,5 +31,8 @@ workflow get_mzmls {
         } else {
             mzml_ch = raw_ch        // use mzMLs directly
         }
+}
 
+def panorama_auth_required_for_url(url) {
+    return url.startsWith(PANORAMA_URL) && !url.contains("/_webdav/Panorama%20Public/")
 }

@@ -37,9 +37,8 @@ workflow get_input_files {
     main:
 
         // get files from Panorama as necessary
-
         if(params.diann_fasta_file) {
-            if(params.diann_fasta_file.startsWith(PANORAMA_URL)) {
+            if(panorama_auth_required_for_url(params.diann_fasta_file)) {
                 PANORAMA_GET_DIANN_FASTA(params.diann_fasta_file, aws_secret_id)
                 diann_fasta_file = PANORAMA_GET_DIANN_FASTA.out.panorama_file
             } else {
@@ -50,7 +49,7 @@ workflow get_input_files {
         }
 
         if(params.carafe_fasta_file) {
-            if(params.carafe_fasta_file.startsWith(PANORAMA_URL)) {
+            if(panorama_auth_required_for_url(params.carafe_fasta_file)) {
                 PANORAMA_GET_CARAFE_FASTA(params.carafe_fasta_file, aws_secret_id)
                 carafe_fasta_file = PANORAMA_GET_CARAFE_FASTA.out.panorama_file
             } else {
@@ -61,7 +60,7 @@ workflow get_input_files {
         }
 
         if(params.peptide_results_file) {
-            if(params.peptide_results_file.startsWith(PANORAMA_URL)) {
+            if(panorama_auth_required_for_url(params.peptide_results_file)) {
                 PANORAMA_GET_PEPTIDE_REPORT(params.peptide_results_file, aws_secret_id)
                 peptide_report = PANORAMA_GET_PEPTIDE_REPORT.out.panorama_file
             } else {
@@ -70,5 +69,8 @@ workflow get_input_files {
         } else {
             peptide_report = null
         }
+}
 
+def panorama_auth_required_for_url(url) {
+    return url.startsWith(PANORAMA_URL) && !url.contains("/_webdav/Panorama%20Public/")
 }
