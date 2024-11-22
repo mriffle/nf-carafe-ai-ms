@@ -56,6 +56,7 @@ process CARAFE {
         """
         touch carafe_spectral_library.tsv carafe_version.txt
         touch stub.stderr stub.stdout
+        touch parameter.txt
         """
 }
 
