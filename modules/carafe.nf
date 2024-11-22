@@ -20,6 +20,7 @@ process CARAFE {
         path("*.stdout"), emit: stdout
         path("carafe_spectral_library.tsv"), emit: speclib_tsv
         path("carafe_version.txt"), emit: version
+        path("parameter.txt"), emit: carafe_parameter_file
 
     script:
 
@@ -56,6 +57,7 @@ process CARAFE {
         """
         touch carafe_spectral_library.tsv carafe_version.txt
         touch stub.stderr stub.stdout
+        touch parameter.txt
         """
 }
 
