@@ -1,7 +1,7 @@
 process DIANN_SEARCH_LIB_FREE {
     publishDir "${params.result_dir}/diann", failOnError: true, mode: 'copy'
     label 'process_high_constant'
-    container params.images.diann
+    container params.diann_image_override ? container params.diann_image_override : params.images.diann
     
     input:
         path ms_files
