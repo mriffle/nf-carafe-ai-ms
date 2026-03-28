@@ -36,14 +36,20 @@ Below is a complete description of all parameters that may be included in these 
 
     This workflow can process files stored in **PanoramaWeb**. When specifying directories or file locations, any paths that begin with ``https://`` will be interpreted as being PanoramaWeb locations.
 
-    For example, to process a raw file stored in PanoramaWeb, you would have the following in your pipeline.config file:
+    For example, to process a single raw file stored in PanoramaWeb, you would have the following in your pipeline.config file:
 
     .. code-block:: bash
 
         spectra_file = 'https://panoramaweb.org/_webdav/path/to/@files/RawFiles/my_file.raw'
 
+    To process multiple files from a PanoramaWeb directory:
 
-    Where, ``https://panoramaweb.org/_webdav/path/to/@files/RawFiles/my_file.raw`` is the WebDav URL of the file on the Panorama server.
+    .. code-block:: bash
+
+        spectra_dir = 'https://panoramaweb.org/_webdav/path/to/@files/RawFiles'
+        spectra_dir_glob = '*.raw'
+
+    Where the URL is the WebDav URL of the file or directory on the Panorama server.
 
 
 The ``params`` Section
@@ -59,10 +65,16 @@ The ``params`` Section
    * - ✓
      - ``carafe_fasta_file``
      - FASTA file used by Carafe to generate final spectral library.
-   * - ✓
+   * - \*
      - ``spectra_file``
-     - The raw or mzML file to process. 
-   * - 
+     - Path to a single raw or mzML file to process. Mutually exclusive with ``spectra_dir``.
+   * - \*
+     - ``spectra_dir``
+     - Path to a directory containing raw or mzML files (local path or PanoramaWeb WebDAV URL). Mutually exclusive with ``spectra_file``. Use with ``spectra_dir_glob`` to select which files to process.
+   * -
+     - ``spectra_dir_glob``
+     - Glob pattern to select files from ``spectra_dir``. All matched files must have the same extension (``.raw`` or ``.mzML``). Default: ``'*.raw'``
+   * -
      - ``output_format``
      - The final output format of the generated spectral library. Must be one of ``'diann'`` or ``'encyclopedia'``. Default: ``'diann'``
    * - 

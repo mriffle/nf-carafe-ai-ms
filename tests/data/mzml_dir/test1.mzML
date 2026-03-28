@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<indexedmzML xmlns="http://psi.hupo.org/ms/mzml">
+  <mzML xmlns="http://psi.hupo.org/ms/mzml">
+    <run>
+      <spectrumList count="0"/>
+    </run>
+  </mzML>
+</indexedmzML>

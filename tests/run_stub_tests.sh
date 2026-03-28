@@ -131,6 +131,34 @@ run_test "Custom Carafe CLI options" \
     --carafe_fasta_file "$SCRIPT_DIR/data/test.fasta" \
     --carafe_cli_options "--custom-option"
 
+# ──────────────────────────────────────────────────────────────────────
+# Test 8: spectra_dir with multiple mzML files
+# Exercises: DIANN_SEARCH_LIB_FREE, CARAFE (multiple inputs)
+# ──────────────────────────────────────────────────────────────────────
+run_test "spectra_dir with multiple mzML files" \
+    --spectra_dir "$SCRIPT_DIR/data/mzml_dir" \
+    --spectra_dir_glob "*.mzML" \
+    --carafe_fasta_file "$SCRIPT_DIR/data/test.fasta"
+
+# ──────────────────────────────────────────────────────────────────────
+# Test 9: spectra_dir with multiple RAW files (triggers msconvert)
+# Exercises: MSCONVERT, DIANN_SEARCH_LIB_FREE, CARAFE (multiple inputs)
+# ──────────────────────────────────────────────────────────────────────
+run_test "spectra_dir with multiple RAW files" \
+    --spectra_dir "$SCRIPT_DIR/data/raw_dir" \
+    --spectra_dir_glob "*.raw" \
+    --carafe_fasta_file "$SCRIPT_DIR/data/test.fasta"
+
+# ──────────────────────────────────────────────────────────────────────
+# Test 10: spectra_dir with pre-computed peptide results
+# Exercises: CARAFE only (DIA-NN skipped, multiple mzML inputs)
+# ──────────────────────────────────────────────────────────────────────
+run_test "spectra_dir + pre-computed peptides (skip DIA-NN)" \
+    --spectra_dir "$SCRIPT_DIR/data/mzml_dir" \
+    --spectra_dir_glob "*.mzML" \
+    --carafe_fasta_file "$SCRIPT_DIR/data/test.fasta" \
+    --peptide_results_file "$SCRIPT_DIR/data/test_peptides.tsv"
+
 # Clean up all test artifacts
 clean
 

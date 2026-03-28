@@ -27,8 +27,12 @@ workflow {
 
     log.info file("${projectDir}/conf/startup.txt").text
 
-    if(!params.spectra_file) {
-        error "`spectra_file` is a required parameter."
+    if(!params.spectra_file && !params.spectra_dir) {
+        error "Either `spectra_file` or `spectra_dir` must be specified."
+    }
+
+    if(params.spectra_file && params.spectra_dir) {
+        error "`spectra_file` and `spectra_dir` cannot both be specified."
     }
 
     if(!params.carafe_fasta_file) {
@@ -54,7 +58,7 @@ workflow {
     }
 
     get_input_files(aws_secret_id)   // get input files
-    get_mzmls(params.spectra_file, aws_secret_id)  // get mzmls
+    get_mzmls(aws_secret_id)  // get mzmls
 
     // set up some convenience variables
     carafe_fasta_file = get_input_files.out.carafe_fasta_file
@@ -115,7 +119,8 @@ def is_panorama_used() {
     return (params.diann_fasta_file     && panorama_auth_required_for_url(params.diann_fasta_file)) ||
            (params.carafe_fasta_file    && panorama_auth_required_for_url(params.carafe_fasta_file)) ||
            (params.peptide_results_file && panorama_auth_required_for_url(params.peptide_results_file)) ||
-           (params.spectra_file         && panorama_auth_required_for_url(params.spectra_file))
+           (params.spectra_file         && panorama_auth_required_for_url(params.spectra_file)) ||
+           (params.spectra_dir          && panorama_auth_required_for_url(params.spectra_dir))
 }
 
 def panorama_auth_required_for_url(url) {

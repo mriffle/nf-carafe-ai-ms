@@ -20,7 +20,7 @@ workflow carafe {
     main:
 
         carafe_results = CARAFE(
-            mzml_file_ch,
+            mzml_file_ch.collect(),
             fasta_file,
             peptide_results_file,
             carafe_params,
