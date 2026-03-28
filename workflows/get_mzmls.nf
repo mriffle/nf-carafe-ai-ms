@@ -13,12 +13,14 @@ workflow get_mzmls {
 
     emit:
        mzml_ch
+       citations
 
     main:
 
         spectra_ch = null
         needs_msconvert = false
         needs_unzip = false
+        citations = Channel.empty()
 
         if(params.spectra_dir) {
 
@@ -38,6 +40,9 @@ workflow get_mzmls {
 
                 PANORAMA_GET_SPECTRA_DIR_FILE(download_urls_ch, aws_secret_id)
                 spectra_ch = PANORAMA_GET_SPECTRA_DIR_FILE.out.panorama_file
+
+                citations = citations.mix(PANORAMA_GET_RAW_FILE_LIST.out.citation)
+                    .mix(PANORAMA_GET_SPECTRA_DIR_FILE.out.citation)
 
                 needs_msconvert = glob_lower.endsWith('.raw')
                 needs_unzip = glob_lower.endsWith('.d.zip')
@@ -76,6 +81,7 @@ workflow get_mzmls {
                 }
                 PANORAMA_GET_SPECTRA_FILE(params.spectra_file, aws_secret_id)
                 spectra_ch = PANORAMA_GET_SPECTRA_FILE.out.panorama_file
+                citations = citations.mix(PANORAMA_GET_SPECTRA_FILE.out.citation)
             } else {
                 spectra_ch = Channel.of(file(params.spectra_file, checkIfExists: true))
             }
@@ -86,11 +92,13 @@ workflow get_mzmls {
         }
 
         if(needs_msconvert) {
-            mzml_ch = MSCONVERT(
+            MSCONVERT(
                 spectra_ch,
                 params.msconvert.do_demultiplex,
                 params.msconvert.do_simasspectra
             )
+            mzml_ch = MSCONVERT.out.mzml_file
+            citations = citations.mix(Channel.of('msconvert'))
         } else if(needs_unzip) {
             mzml_ch = UNZIP_BRUKER_DATA(spectra_ch)
         } else {

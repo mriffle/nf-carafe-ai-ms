@@ -13,6 +13,7 @@ include { save_run_details } from "./workflows/save_run_details"
 include { GET_AWS_USER_ID } from "./modules/aws"
 include { BUILD_AWS_SECRETS } from "./modules/aws"
 include { ENCYCLOPEDIA_TSV_TO_DLIB } from "./modules/encyclopedia"
+include { WRITE_CITATIONS } from "./modules/citations"
 
 // useful functions and variables
 include { param_to_list } from "./workflows/get_input_files"
@@ -65,6 +66,10 @@ workflow {
     diann_fasta_file = get_input_files.out.diann_fasta_file
     mzml_file_ch = get_mzmls.out.mzml_ch
 
+    // collect citations from subworkflows
+    all_citations = get_input_files.out.citations
+        .mix(get_mzmls.out.citations)
+
     if(!params.peptide_results_file) {
         diann_search(
             mzml_file_ch,
@@ -72,6 +77,7 @@ workflow {
         )
         diann_version = diann_search.out.diann_version
         peptide_report_file = diann_search.out.precursor_tsv
+        all_citations = all_citations.mix(diann_search.out.citations)
     } else {
         diann_version = Channel.empty()
         peptide_report_file = get_input_files.out.peptide_report
@@ -90,7 +96,11 @@ workflow {
             carafe_fasta_file,
             carafe.out.speclib_tsv
         )
+        all_citations = all_citations.mix(ENCYCLOPEDIA_TSV_TO_DLIB.out.citation)
     }
+
+    all_citations = all_citations.mix(carafe.out.citations)
+    WRITE_CITATIONS(all_citations.unique().collect())
 
     carafe_version = carafe.out.carafe_version
     version_files = carafe_version.concat(diann_version).splitText()

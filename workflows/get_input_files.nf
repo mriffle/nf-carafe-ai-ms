@@ -33,14 +33,18 @@ workflow get_input_files {
        diann_fasta_file
        carafe_fasta_file
        peptide_report
+       citations
 
     main:
+
+        citations = Channel.empty()
 
         // get files from Panorama as necessary
         if(params.diann_fasta_file) {
             if(panorama_auth_required_for_url(params.diann_fasta_file)) {
                 PANORAMA_GET_DIANN_FASTA(params.diann_fasta_file, aws_secret_id)
                 diann_fasta_file = PANORAMA_GET_DIANN_FASTA.out.panorama_file
+                citations = citations.mix(PANORAMA_GET_DIANN_FASTA.out.citation)
             } else {
                 diann_fasta_file = file(params.diann_fasta_file, checkIfExists: true)
             }
@@ -52,6 +56,7 @@ workflow get_input_files {
             if(panorama_auth_required_for_url(params.carafe_fasta_file)) {
                 PANORAMA_GET_CARAFE_FASTA(params.carafe_fasta_file, aws_secret_id)
                 carafe_fasta_file = PANORAMA_GET_CARAFE_FASTA.out.panorama_file
+                citations = citations.mix(PANORAMA_GET_CARAFE_FASTA.out.citation)
             } else {
                 carafe_fasta_file = file(params.carafe_fasta_file, checkIfExists: true)
             }
@@ -63,6 +68,7 @@ workflow get_input_files {
             if(panorama_auth_required_for_url(params.peptide_results_file)) {
                 PANORAMA_GET_PEPTIDE_REPORT(params.peptide_results_file, aws_secret_id)
                 peptide_report = PANORAMA_GET_PEPTIDE_REPORT.out.panorama_file
+                citations = citations.mix(PANORAMA_GET_PEPTIDE_REPORT.out.citation)
             } else {
                 peptide_report = file(params.peptide_results_file, checkIfExists: true)
             }

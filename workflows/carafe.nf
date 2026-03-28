@@ -16,6 +16,7 @@ workflow carafe {
         carafe_version
         stdout
         stderr
+        citations
 
     main:
 
@@ -31,4 +32,5 @@ workflow carafe {
         speclib_tsv       = carafe_results.speclib_tsv
         stdout            = carafe_results.stdout
         stderr            = carafe_results.stderr
+        citations         = CARAFE.out.citation
 }

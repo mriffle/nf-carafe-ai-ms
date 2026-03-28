@@ -58,7 +58,13 @@ The workflow executes these steps in order:
    - Only when output_format='encyclopedia'
    - Converts Carafe TSV output to EncyclopeDIA DLIB format
 
-8. Email notification on workflow completion (if configured)
+8. WRITE_CITATIONS
+   - Collects citation keys emitted by processes and subworkflows
+   - Deduplicates and sorts citation keys
+   - Writes citations.txt listing programs used and their references
+   - Citation definitions are centralized in citations.config
+
+9. Email notification on workflow completion (if configured)
 ```
 
 ---
@@ -70,12 +76,14 @@ nf-carafe-ai-ms/
 ├── main.nf                        # Main workflow entry point
 ├── nextflow.config                # Primary configuration (params, profiles, reporting)
 ├── container_images.config        # Docker/container image version mappings
+├── citations.config               # Tool citation definitions (name + reference per tool)
 ├── conf/
 │   └── base.config                # Process resource labels and retry logic
 ├── modules/                       # Nextflow process definitions (one per tool)
 │   ├── aws.nf                     # GET_AWS_USER_ID, BUILD_AWS_SECRETS
 │   ├── bruker.nf                  # UNZIP_BRUKER_DATA (.d.zip -> .d)
 │   ├── carafe.nf                  # CARAFE process
+│   ├── citations.nf               # WRITE_CITATIONS process
 │   ├── diann.nf                   # DIANN_SEARCH_LIB_FREE, BLIB_BUILD_LIBRARY
 │   ├── encyclopedia.nf            # ENCYCLOPEDIA_TSV_TO_DLIB
 │   ├── msconvert.nf               # MSCONVERT (RAW to mzML)
@@ -151,6 +159,9 @@ Note: The file header comment references `nf-maccoss-trex`, which is a legacy na
 ### `container_images.config`
 Maps logical image names to versioned container URIs on Quay.io (`quay.io/protio/*`). All tools run in containers, so no local tool installation is required.
 
+### `citations.config`
+Maps tool citation keys to their display name and reference string. Each entry has a `name` (display name) and `ref` (citation text). Keys defined: `panorama`, `carafe`, `msconvert`, `diann`, `bibliospec`, `encyclopedia`. Processes emit their citation key; the `WRITE_CITATIONS` process looks up entries here to produce `citations.txt`.
+
 ### `conf/base.config`
 Defines default process resources and resource labels used throughout modules.
 
@@ -181,11 +192,12 @@ Each module file in `modules/` defines one or more Nextflow processes wrapping a
 |--------|-----------|-----------|---------|
 | `aws.nf` | `GET_AWS_USER_ID`, `BUILD_AWS_SECRETS` | (no container; runs locally) | AWS identity and Secrets Manager for PanoramaWeb API keys |
 | `bruker.nf` | `UNZIP_BRUKER_DATA` | ubuntu:22.04 | Unzip Bruker `.d.zip` archives to `.d` directories |
-| `panorama.nf` | `PANORAMA_GET_FILE`, `PANORAMA_GET_RAW_FILE`, `PANORAMA_GET_RAW_FILE_LIST` | panorama-client:1.1.0 | Download files from PanoramaWeb via WebDAV, with caching. `PANORAMA_GET_RAW_FILE_LIST` is used by `get_mzmls` when `spectra_dir` is a PanoramaWeb URL. |
-| `msconvert.nf` | `MSCONVERT` | proteowizard:3.0.24172 | Convert RAW files to mzML (runs via wine) |
-| `diann.nf` | `DIANN_SEARCH_LIB_FREE`, `BLIB_BUILD_LIBRARY` | diann:1.8.1 (note: `BLIB_BUILD_LIBRARY` references `params.images.bibliospec` which is not defined in `container_images.config`) | Library-free DIA-NN peptide identification |
-| `carafe.nf` | `CARAFE` | carafe:2.0.0 | AI-enhanced spectral library generation (Java JAR). Uses `-ms "."` to process all mzML files and Bruker `.d` directories in the working directory. |
-| `encyclopedia.nf` | `ENCYCLOPEDIA_TSV_TO_DLIB` | encyclopedia:2.12.30-2 | Convert Carafe TSV to EncyclopeDIA DLIB format |
+| `citations.nf` | `WRITE_CITATIONS` | ubuntu:22.04 | Collates unique citation keys and writes `citations.txt` with program names and references from `citations.config` |
+| `panorama.nf` | `PANORAMA_GET_FILE`, `PANORAMA_GET_RAW_FILE`, `PANORAMA_GET_RAW_FILE_LIST` | panorama-client:1.1.0 | Download files from PanoramaWeb via WebDAV, with caching. `PANORAMA_GET_RAW_FILE_LIST` is used by `get_mzmls` when `spectra_dir` is a PanoramaWeb URL. Emits `'panorama'` citation key. |
+| `msconvert.nf` | `MSCONVERT` | proteowizard:3.0.24172 | Convert RAW files to mzML (runs via wine). Citation key `'msconvert'` is emitted at the workflow level (not in the process) to avoid conflict with `storeDir`. |
+| `diann.nf` | `DIANN_SEARCH_LIB_FREE`, `BLIB_BUILD_LIBRARY` | diann:1.8.1 (note: `BLIB_BUILD_LIBRARY` references `params.images.bibliospec` which is not defined in `container_images.config`) | Library-free DIA-NN peptide identification. Emit `'diann'` and `'bibliospec'` citation keys respectively. |
+| `carafe.nf` | `CARAFE` | carafe:2.0.0 | AI-enhanced spectral library generation (Java JAR). Uses `-ms "."` to process all mzML files and Bruker `.d` directories in the working directory. Emits `'carafe'` citation key. |
+| `encyclopedia.nf` | `ENCYCLOPEDIA_TSV_TO_DLIB` | encyclopedia:2.12.30-2 | Convert Carafe TSV to EncyclopeDIA DLIB format. Emits `'encyclopedia'` citation key. |
 
 ### Notable Implementation Details
 
@@ -193,6 +205,8 @@ Each module file in `modules/` defines one or more Nextflow processes wrapping a
 - **Carafe module**: Detects Apptainer/Singularity vs Docker and conditionally activates a conda environment. Allocates Java heap as `(task.memory - 1 GB)`. Accepts both mzML files and Bruker `.d` directories as input (staged into the work directory and discovered via `-ms "."`).
 - **Panorama module**: Uses `PanoramaClient.jar` for WebDAV access. On AWS, retrieves API keys from Secrets Manager. `PANORAMA_GET_RAW_FILE` uses `storeDir` for file caching; `PANORAMA_GET_FILE` does not cache (used for FASTA, report, and spectra file downloads). `PANORAMA_GET_RAW_FILE_LIST` lists files on a PanoramaWeb directory, filters by a glob-derived regex, and outputs `download_files.txt` with full download URLs. The `panorama_auth_required_for_url()` helper is duplicated across `main.nf`, `get_input_files.nf`, and `get_mzmls.nf`.
 - **msconvert module**: Caches output mzML files using `storeDir` keyed by `workflow.commitId` and demux/simasspectra settings.
+- **Citations module**: `WRITE_CITATIONS` receives a collected list of unique citation keys, looks up each key in `params.citations` (from `citations.config`), and writes a formatted `citations.txt` file. Runs in the `ubuntu` container.
+- **Citation emission**: Most processes emit their citation key as a `val` output (e.g., `val 'carafe', emit: citation`). Exception: MSCONVERT uses `storeDir` for caching, which is incompatible with `val` outputs, so its citation key (`'msconvert'`) is emitted via `Channel.of()` at the workflow level in `get_mzmls.nf`.
 - **All modules**: Include `stub` blocks for dry-run testing of workflow structure.
 
 ---
@@ -201,10 +215,10 @@ Each module file in `modules/` defines one or more Nextflow processes wrapping a
 
 | Subworkflow | File | Purpose |
 |-------------|------|---------|
-| `get_input_files` | `workflows/get_input_files.nf` | Acquires FASTA files and peptide reports; handles PanoramaWeb downloads vs local files. Exports `param_to_list()` utility. |
-| `get_mzmls` | `workflows/get_mzmls.nf` | Acquires spectra files (single via `spectra_file` or multiple via `spectra_dir` + glob), converts RAW to mzML if needed, and unzips `.d.zip` to `.d` if needed. For PanoramaWeb directories, uses `PANORAMA_GET_RAW_FILE_LIST` to list and filter files, then `PANORAMA_GET_FILE` to download each (`.d` directories rejected for Panorama; only `.d.zip` allowed). For local directories, globs files/directories (with `type: 'any'`) and validates extensions. |
-| `diann_search` | `workflows/diann_search.nf` | Runs DIA-NN in library-free mode; outputs precursor TSV and spectral library. |
-| `carafe` | `workflows/carafe.nf` | Collects all mzML files and/or Bruker `.d` directories and runs Carafe with `-ms "."` to process them all, along with FASTA and peptide results. |
+| `get_input_files` | `workflows/get_input_files.nf` | Acquires FASTA files and peptide reports; handles PanoramaWeb downloads vs local files. Exports `param_to_list()` utility. Emits `citations` channel with `'panorama'` keys when PanoramaWeb is used. |
+| `get_mzmls` | `workflows/get_mzmls.nf` | Acquires spectra files (single via `spectra_file` or multiple via `spectra_dir` + glob), converts RAW to mzML if needed, and unzips `.d.zip` to `.d` if needed. For PanoramaWeb directories, uses `PANORAMA_GET_RAW_FILE_LIST` to list and filter files, then `PANORAMA_GET_FILE` to download each (`.d` directories rejected for Panorama; only `.d.zip` allowed). For local directories, globs files/directories (with `type: 'any'`) and validates extensions. Emits `citations` channel with `'panorama'` and/or `'msconvert'` keys as appropriate. |
+| `diann_search` | `workflows/diann_search.nf` | Runs DIA-NN in library-free mode; outputs precursor TSV and spectral library. Emits `citations` channel with `'diann'` key. |
+| `carafe` | `workflows/carafe.nf` | Collects all mzML files and/or Bruker `.d` directories and runs Carafe with `-ms "."` to process them all, along with FASTA and peptide results. Emits `citations` channel with `'carafe'` key. |
 | `save_run_details` | `workflows/save_run_details.nf` | Collects version info and run metadata (currently disabled in main.nf). Also defines the `WRITE_VERSION_INFO` process inline (not in a module file). |
 
 ---
@@ -265,6 +279,7 @@ Results are written to `results/nf-carafe-ai-ms/` by default:
 
 ```
 results/nf-carafe-ai-ms/
+├── citations.txt                          # Programs used and their citations
 ├── carafe/
 │   ├── carafe_spectral_library.tsv      # Main output (DIA-NN format)
 │   ├── carafe_spectral_library.dlib     # If output_format='encyclopedia'

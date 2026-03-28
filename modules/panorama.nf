@@ -67,6 +67,7 @@ process PANORAMA_GET_RAW_FILE_LIST {
         path("download_files.txt"), emit: download_file_list
         path("*.stdout"), emit: stdout
         path("*.stderr"), emit: stderr
+        val 'panorama', emit: citation
 
     script:
     // convert glob to regex that we can use to grep lines from a file of filenames
@@ -129,6 +130,7 @@ process PANORAMA_GET_FILE {
         path("${file(web_dav_dir_url).name}"), emit: panorama_file
         path("*.stdout"), emit: stdout
         path("*.stderr"), emit: stderr
+        val 'panorama', emit: citation
 
     script:
         file_name = file(web_dav_dir_url).name

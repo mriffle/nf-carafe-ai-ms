@@ -16,6 +16,7 @@ workflow diann_search {
         stderr
         predicted_speclib
         diann_version
+        citations
 
     main:
 
@@ -29,10 +30,10 @@ workflow diann_search {
         diann_version = DIANN_SEARCH_LIB_FREE.out.version
         predicted_speclib = diann_results.predicted_speclib
 
-
         quant_files       = diann_results.quant_files
         speclib           = diann_results.speclib
         precursor_tsv     = diann_results.precursor_tsv
         stdout            = diann_results.stdout
         stderr            = diann_results.stderr
+        citations         = DIANN_SEARCH_LIB_FREE.out.citation
 }

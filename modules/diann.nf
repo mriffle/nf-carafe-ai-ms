@@ -16,6 +16,7 @@ process DIANN_SEARCH_LIB_FREE {
         path("*.quant"), emit: quant_files
         path("lib.predicted.speclib"), emit: predicted_speclib
         path("diann_version.txt"), emit: version
+        val 'diann', emit: citation
 
     script:
 
@@ -60,6 +61,7 @@ process BLIB_BUILD_LIBRARY {
 
     output:
         path('lib.blib'), emit: blib
+        val 'bibliospec', emit: citation
 
     script:
         """

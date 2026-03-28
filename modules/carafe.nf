@@ -21,6 +21,7 @@ process CARAFE {
         path("carafe_spectral_library.tsv"), emit: speclib_tsv
         path("carafe_version.txt"), emit: version
         path("parameter.txt"), emit: carafe_parameter_file
+        val 'carafe', emit: citation
 
     script:
 

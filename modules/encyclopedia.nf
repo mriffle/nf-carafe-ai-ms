@@ -18,6 +18,7 @@ process ENCYCLOPEDIA_TSV_TO_DLIB {
         path("*.stderr"), emit: stderr
         path("*.stdout"), emit: stdout
         path("carafe_spectral_library.dlib"), emit: dlib
+        val 'encyclopedia', emit: citation
 
     script:
     """
