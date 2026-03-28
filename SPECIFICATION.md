@@ -100,7 +100,6 @@ nf-carafe-ai-ms/
 │   ├── diann_search.nf            # DIA-NN search subworkflow
 │   ├── get_input_files.nf         # Input file acquisition subworkflow
 │   ├── get_mzmls.nf               # mzML preparation subworkflow
-│   └── save_run_details.nf        # Run metadata collection (currently disabled)
 ├── lib/
 │   └── EmailTemplate.groovy       # Groovy class for email notification rendering
 ├── assets/
@@ -229,7 +228,6 @@ Each module file in `modules/` defines one or more Nextflow processes wrapping a
 | `get_mzmls` | `workflows/get_mzmls.nf` | Acquires spectra files (single via `spectra_file` or multiple via `spectra_dir` + glob), converts RAW to mzML if needed, and unzips `.d.zip` to `.d` if needed. For PanoramaWeb directories, uses `PANORAMA_GET_RAW_FILE_LIST` to list and filter files, then `PANORAMA_GET_FILE` to download each (`.d` directories rejected for Panorama; only `.d.zip` allowed). For local directories, globs files/directories (with `type: 'any'`) and validates extensions. Emits `citations` channel with `'panorama'` and/or `'msconvert'` keys and `versions` channel with version.json files as appropriate. |
 | `diann_search` | `workflows/diann_search.nf` | Runs DIA-NN in library-free mode; outputs precursor TSV and spectral library. Emits `citations` channel with `'diann'` key and `versions` channel with DIA-NN version.json. |
 | `carafe` | `workflows/carafe.nf` | Collects all mzML files and/or Bruker `.d` directories and runs Carafe with `-ms "."` to process them all, along with FASTA and peptide results. Emits `citations` channel with `'carafe'` key and `versions` channel with Carafe version.json. |
-| `save_run_details` | `workflows/save_run_details.nf` | Collects version info and run metadata (currently disabled in main.nf). Also defines the `WRITE_VERSION_INFO` process inline (not in a module file). |
 
 ---
 
@@ -448,7 +446,6 @@ Failure to update documentation alongside code changes results in specification 
 
 ## Known Notes
 
-- The `save_run_details` subworkflow exists in `workflows/save_run_details.nf` but is not used (no longer imported in `main.nf`). It was superseded by the `WRITE_VERSIONS` process and `versions.txt` output.
 - The `BLIB_BUILD_LIBRARY` process exists in `modules/diann.nf` but is not used in the current workflow. Its container image (`params.images.bibliospec`) is not defined in `container_images.config`.
 - The `PANORAMA_GET_RAW_FILE_LIST` process is used by `get_mzmls` when `spectra_dir` is a PanoramaWeb URL. It lists files, filters by glob, and outputs download URLs.
 - The `DESTROY_AWS_SECRETS` process in `modules/aws.nf` is commented out.

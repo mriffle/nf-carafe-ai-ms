@@ -103,7 +103,18 @@ workflow {
     all_version_data = all_versions.map { file ->
         new groovy.json.JsonSlurper().parseText(file.text)
     }
-    WRITE_VERSIONS(all_version_data.collect())
+
+    workflow_metadata = Channel.of(
+        ["Nextflow run at", workflow.start],
+        ["Nextflow version", nextflow.version],
+        ["Workflow git address", "${workflow.repository}"],
+        ["Workflow git revision (branch)", "${workflow.revision}"],
+        ["Workflow git commit hash", "${workflow.commitId}"],
+        ["Run session ID", workflow.sessionId],
+        ["Command line", workflow.commandLine]
+    ).collect()
+
+    WRITE_VERSIONS(workflow_metadata, all_version_data.collect())
 
 }
 
