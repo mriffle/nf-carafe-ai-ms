@@ -19,7 +19,7 @@ process CARAFE {
         path("*.stderr"), emit: stderr
         path("*.stdout"), emit: stdout
         path("carafe_spectral_library.tsv"), emit: speclib_tsv
-        path("carafe_version.txt"), emit: version
+        path("carafe_version.json"), emit: version_info
         path("parameter.txt"), emit: carafe_parameter_file
         val 'carafe', emit: citation
 
@@ -35,6 +35,8 @@ process CARAFE {
         }
 
         lf_type_param = output_format == 'diann' ? 'diann' : 'encyclopedia'
+
+        def container_image = task.container ?: 'none'
 
         """
         ${apptainer_cmds}
@@ -53,12 +55,17 @@ process CARAFE {
 
         mv -v SkylineAI_spectral_library.tsv carafe_spectral_library.tsv
 
-        grep "Version:" carafe.stdout | head -n 1 | awk '{print \$2}' | xargs printf "carafe_version=%s\n" > carafe_version.txt
+        CARAFE_VERSION=\$(grep "Version:" carafe.stdout | head -n 1 | awk '{print \$2}' || true)
+        CARAFE_VERSION=\${CARAFE_VERSION:-unknown}
+        cat <<VEOF > carafe_version.json
+{"program": "Carafe", "version": "\$CARAFE_VERSION", "container": "${container_image}"}
+VEOF
         """
 
     stub:
         """
-        touch carafe_spectral_library.tsv carafe_version.txt
+        touch carafe_spectral_library.tsv
+        echo '{"program": "Carafe", "version": "stub", "container": "stub"}' > carafe_version.json
         touch stub.stderr stub.stdout
         touch parameter.txt
         """

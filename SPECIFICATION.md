@@ -64,7 +64,13 @@ The workflow executes these steps in order:
    - Writes citations.txt listing programs used and their references
    - Citation definitions are centralized in citations.config
 
-9. Email notification on workflow completion (if configured)
+9. WRITE_VERSIONS
+   - Collects version.json files emitted by processes and subworkflows
+   - Each version.json contains program name, runtime version, and container image
+   - Deduplicates by program name, sorts alphabetically
+   - Writes versions.txt listing programs, versions, and container images used
+
+10. Email notification on workflow completion (if configured)
 ```
 
 ---
@@ -84,6 +90,7 @@ nf-carafe-ai-ms/
 │   ├── bruker.nf                  # UNZIP_BRUKER_DATA (.d.zip -> .d)
 │   ├── carafe.nf                  # CARAFE process
 │   ├── citations.nf               # WRITE_CITATIONS process
+│   ├── versions.nf                # WRITE_VERSIONS process
 │   ├── diann.nf                   # DIANN_SEARCH_LIB_FREE, BLIB_BUILD_LIBRARY
 │   ├── encyclopedia.nf            # ENCYCLOPEDIA_TSV_TO_DLIB
 │   ├── msconvert.nf               # MSCONVERT (RAW to mzML)
@@ -149,7 +156,7 @@ nf-carafe-ai-ms/
 ## Key Files in Detail
 
 ### `main.nf`
-The workflow entry point. Validates parameters (requiring either `spectra_file` or `spectra_dir`, but not both), conditionally sets up AWS secrets for PanoramaWeb access, orchestrates all subworkflows, and handles email notifications on completion. Contains helper functions `is_panorama_used()` and `panorama_auth_required_for_url()` for determining when AWS Secrets Manager credentials are needed. Also defines a `dummy` workflow for testing.
+The workflow entry point. Validates parameters (requiring either `spectra_file` or `spectra_dir`, but not both), conditionally sets up AWS secrets for PanoramaWeb access, orchestrates all subworkflows, collects citations and version information, and handles email notifications on completion. Contains helper functions `is_panorama_used()` and `panorama_auth_required_for_url()` for determining when AWS Secrets Manager credentials are needed. Also defines a `dummy` workflow for testing.
 
 ### `nextflow.config`
 Defines all workflow parameters, execution profiles (standard/aws/slurm), AWS Batch settings, Nextflow reporting (timeline, report, trace), and the `check_max()` utility function for capping resource requests. Includes `conf/base.config` and `container_images.config`.
@@ -193,6 +200,7 @@ Each module file in `modules/` defines one or more Nextflow processes wrapping a
 | `aws.nf` | `GET_AWS_USER_ID`, `BUILD_AWS_SECRETS` | (no container; runs locally) | AWS identity and Secrets Manager for PanoramaWeb API keys |
 | `bruker.nf` | `UNZIP_BRUKER_DATA` | ubuntu:22.04 | Unzip Bruker `.d.zip` archives to `.d` directories |
 | `citations.nf` | `WRITE_CITATIONS` | ubuntu:22.04 | Collates unique citation keys and writes `citations.txt` with program names and references from `citations.config` |
+| `versions.nf` | `WRITE_VERSIONS` | ubuntu:22.04 | Collects version.json files from processes, deduplicates by program name, and writes `versions.txt` with program names, runtime versions, and container images |
 | `panorama.nf` | `PANORAMA_GET_FILE`, `PANORAMA_GET_RAW_FILE`, `PANORAMA_GET_RAW_FILE_LIST` | panorama-client:1.1.0 | Download files from PanoramaWeb via WebDAV, with caching. `PANORAMA_GET_RAW_FILE_LIST` is used by `get_mzmls` when `spectra_dir` is a PanoramaWeb URL. Emits `'panorama'` citation key. |
 | `msconvert.nf` | `MSCONVERT` | proteowizard:3.0.24172 | Convert RAW files to mzML (runs via wine). Citation key `'msconvert'` is emitted at the workflow level (not in the process) to avoid conflict with `storeDir`. |
 | `diann.nf` | `DIANN_SEARCH_LIB_FREE`, `BLIB_BUILD_LIBRARY` | diann:1.8.1 (note: `BLIB_BUILD_LIBRARY` references `params.images.bibliospec` which is not defined in `container_images.config`) | Library-free DIA-NN peptide identification. Emit `'diann'` and `'bibliospec'` citation keys respectively. |
@@ -207,6 +215,8 @@ Each module file in `modules/` defines one or more Nextflow processes wrapping a
 - **msconvert module**: Caches output mzML files using `storeDir` keyed by `workflow.commitId` and demux/simasspectra settings.
 - **Citations module**: `WRITE_CITATIONS` receives a collected list of unique citation keys, looks up each key in `params.citations` (from `citations.config`), and writes a formatted `citations.txt` file. Runs in the `ubuntu` container.
 - **Citation emission**: Most processes emit their citation key as a `val` output (e.g., `val 'carafe', emit: citation`). Exception: MSCONVERT uses `storeDir` for caching, which is incompatible with `val` outputs, so its citation key (`'msconvert'`) is emitted via `Channel.of()` at the workflow level in `get_mzmls.nf`.
+- **Version emission**: Each process that runs a tool emits a `version.json` file (`path` output, `emit: version_info`) containing `{"program": "<name>", "version": "<version>", "container": "<image>"}`. The version is extracted at runtime (from stdout, stderr, or `--version` flag). The container image comes from `task.container`. For MSCONVERT (storeDir), the version file is cached alongside the mzML output using per-input naming (`${raw_file.baseName}_msconvert_version.json`). For PanoramaClient (no runtime version flag), the version is extracted from the container image tag. Subworkflows expose `emit: versions` channels; `main.nf` collects all version files, parses them with `groovy.json.JsonSlurper`, and passes the data to `WRITE_VERSIONS`.
+- **Versions module**: `WRITE_VERSIONS` receives a collected list of parsed version entries (maps with `program`, `version`, `container` keys), deduplicates by program name, sorts alphabetically, and writes a formatted `versions.txt`. Runs in the `ubuntu` container.
 - **All modules**: Include `stub` blocks for dry-run testing of workflow structure.
 
 ---
@@ -215,10 +225,10 @@ Each module file in `modules/` defines one or more Nextflow processes wrapping a
 
 | Subworkflow | File | Purpose |
 |-------------|------|---------|
-| `get_input_files` | `workflows/get_input_files.nf` | Acquires FASTA files and peptide reports; handles PanoramaWeb downloads vs local files. Exports `param_to_list()` utility. Emits `citations` channel with `'panorama'` keys when PanoramaWeb is used. |
-| `get_mzmls` | `workflows/get_mzmls.nf` | Acquires spectra files (single via `spectra_file` or multiple via `spectra_dir` + glob), converts RAW to mzML if needed, and unzips `.d.zip` to `.d` if needed. For PanoramaWeb directories, uses `PANORAMA_GET_RAW_FILE_LIST` to list and filter files, then `PANORAMA_GET_FILE` to download each (`.d` directories rejected for Panorama; only `.d.zip` allowed). For local directories, globs files/directories (with `type: 'any'`) and validates extensions. Emits `citations` channel with `'panorama'` and/or `'msconvert'` keys as appropriate. |
-| `diann_search` | `workflows/diann_search.nf` | Runs DIA-NN in library-free mode; outputs precursor TSV and spectral library. Emits `citations` channel with `'diann'` key. |
-| `carafe` | `workflows/carafe.nf` | Collects all mzML files and/or Bruker `.d` directories and runs Carafe with `-ms "."` to process them all, along with FASTA and peptide results. Emits `citations` channel with `'carafe'` key. |
+| `get_input_files` | `workflows/get_input_files.nf` | Acquires FASTA files and peptide reports; handles PanoramaWeb downloads vs local files. Exports `param_to_list()` utility. Emits `citations` channel with `'panorama'` keys and `versions` channel with version.json files when PanoramaWeb is used. |
+| `get_mzmls` | `workflows/get_mzmls.nf` | Acquires spectra files (single via `spectra_file` or multiple via `spectra_dir` + glob), converts RAW to mzML if needed, and unzips `.d.zip` to `.d` if needed. For PanoramaWeb directories, uses `PANORAMA_GET_RAW_FILE_LIST` to list and filter files, then `PANORAMA_GET_FILE` to download each (`.d` directories rejected for Panorama; only `.d.zip` allowed). For local directories, globs files/directories (with `type: 'any'`) and validates extensions. Emits `citations` channel with `'panorama'` and/or `'msconvert'` keys and `versions` channel with version.json files as appropriate. |
+| `diann_search` | `workflows/diann_search.nf` | Runs DIA-NN in library-free mode; outputs precursor TSV and spectral library. Emits `citations` channel with `'diann'` key and `versions` channel with DIA-NN version.json. |
+| `carafe` | `workflows/carafe.nf` | Collects all mzML files and/or Bruker `.d` directories and runs Carafe with `-ms "."` to process them all, along with FASTA and peptide results. Emits `citations` channel with `'carafe'` key and `versions` channel with Carafe version.json. |
 | `save_run_details` | `workflows/save_run_details.nf` | Collects version info and run metadata (currently disabled in main.nf). Also defines the `WRITE_VERSION_INFO` process inline (not in a module file). |
 
 ---
@@ -280,10 +290,11 @@ Results are written to `results/nf-carafe-ai-ms/` by default:
 ```
 results/nf-carafe-ai-ms/
 ├── citations.txt                          # Programs used and their citations
+├── versions.txt                           # Programs, versions, and container images used
 ├── carafe/
 │   ├── carafe_spectral_library.tsv      # Main output (DIA-NN format)
 │   ├── carafe_spectral_library.dlib     # If output_format='encyclopedia'
-│   ├── carafe_version.txt
+│   ├── carafe_version.json
 │   ├── parameter.txt                    # Carafe parameters used
 │   ├── carafe.stdout / carafe.stderr
 │   └── encyclopedia-convert-*.stdout/stderr  # If encyclopedia conversion ran
@@ -292,7 +303,7 @@ results/nf-carafe-ai-ms/
 │   ├── report.tsv.speclib
 │   ├── lib.predicted.speclib
 │   ├── *.quant
-│   ├── diann_version.txt
+│   ├── diann_version.json
 │   └── diann.stdout / diann.stderr
 └── panorama/                            # If PanoramaWeb files were downloaded
     └── *.stdout / *.stderr
@@ -437,7 +448,7 @@ Failure to update documentation alongside code changes results in specification 
 
 ## Known Notes
 
-- The `save_run_details` subworkflow is included but currently disabled (commented out in `main.nf`).
+- The `save_run_details` subworkflow exists in `workflows/save_run_details.nf` but is not used (no longer imported in `main.nf`). It was superseded by the `WRITE_VERSIONS` process and `versions.txt` output.
 - The `BLIB_BUILD_LIBRARY` process exists in `modules/diann.nf` but is not used in the current workflow. Its container image (`params.images.bibliospec`) is not defined in `container_images.config`.
 - The `PANORAMA_GET_RAW_FILE_LIST` process is used by `get_mzmls` when `spectra_dir` is a PanoramaWeb URL. It lists files, filters by glob, and outputs download URLs.
 - The `DESTROY_AWS_SECRETS` process in `modules/aws.nf` is commented out.

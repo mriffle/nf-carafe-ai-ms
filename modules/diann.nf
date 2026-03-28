@@ -15,7 +15,7 @@ process DIANN_SEARCH_LIB_FREE {
         path("report.tsv"), emit: precursor_tsv
         path("*.quant"), emit: quant_files
         path("lib.predicted.speclib"), emit: predicted_speclib
-        path("diann_version.txt"), emit: version
+        path("diann_version.json"), emit: version_info
         val 'diann', emit: citation
 
     script:
@@ -28,6 +28,8 @@ process DIANN_SEARCH_LIB_FREE {
 
         ms_file_args = "--f '${sorted_ms_files.join('\' --f \'')}'"
 
+        def container_image = task.container ?: 'none'
+
         """
         diann ${ms_file_args} \
             --threads ${task.cpus} \
@@ -38,14 +40,18 @@ process DIANN_SEARCH_LIB_FREE {
             > >(tee "diann.stdout") 2> >(tee "diann.stderr" >&2)
         mv -v lib.tsv.speclib report.tsv.speclib
 
-        head -n 1 diann.stdout | egrep -o '[0-9]+\\.[0-9]+\\.[0-9]+' | xargs printf "diann_version=%s\\n" > diann_version.txt
+        DIANN_VERSION=\$(head -n 1 diann.stdout | egrep -o '[0-9]+\\.[0-9]+\\.[0-9]+' || true)
+        DIANN_VERSION=\${DIANN_VERSION:-unknown}
+        cat <<VEOF > diann_version.json
+{"program": "DIA-NN", "version": "\$DIANN_VERSION", "container": "${container_image}"}
+VEOF
         """
 
     stub:
         """
         touch lib.predicted.speclib report.tsv.speclib report.tsv stub.quant
         touch stub.stderr stub.stdout
-        echo "diann_version=stub" > diann_version.txt
+        echo '{"program": "DIA-NN", "version": "stub", "container": "stub"}' > diann_version.json
         """
 }
 

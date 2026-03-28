@@ -12,11 +12,14 @@ process MSCONVERT {
 
     output:
         path("${raw_file.baseName}.mzML"), emit: mzml_file
+        path("${raw_file.baseName}_msconvert_version.json"), emit: version_info
 
     script:
 
     demultiplex_param = do_demultiplex ? '--filter "demultiplex optimization=overlap_only"' : ''
     simasspectra = do_simasspectra ? '--simAsSpectra' : ''
+
+    def container_image = task.container ?: 'none'
 
     """
     wine msconvert \
@@ -26,11 +29,19 @@ process MSCONVERT {
         --mzML \
         --ignoreUnknownInstrumentError \
         --filter "peakPicking true 1-" \
-        --64 ${simasspectra} ${demultiplex_param}
+        --64 ${simasspectra} ${demultiplex_param} \
+        2> >(tee msconvert.stderr >&2)
+
+    MSCONVERT_VERSION=\$(head -5 msconvert.stderr | egrep -o '[0-9]+\\.[0-9]+(\\.[0-9]+)?' | head -1 || true)
+    MSCONVERT_VERSION=\${MSCONVERT_VERSION:-unknown}
+    cat <<VEOF > ${raw_file.baseName}_msconvert_version.json
+{"program": "msconvert", "version": "\$MSCONVERT_VERSION", "container": "${container_image}"}
+VEOF
     """
 
     stub:
     """
     touch ${raw_file.baseName}.mzML
+    echo '{"program": "msconvert", "version": "stub", "container": "stub"}' > ${raw_file.baseName}_msconvert_version.json
     """
 }

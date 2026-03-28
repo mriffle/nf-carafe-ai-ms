@@ -67,11 +67,15 @@ process PANORAMA_GET_RAW_FILE_LIST {
         path("download_files.txt"), emit: download_file_list
         path("*.stdout"), emit: stdout
         path("*.stderr"), emit: stderr
+        path("panorama_version.json"), emit: version_info
         val 'panorama', emit: citation
 
     script:
     // convert glob to regex that we can use to grep lines from a file of filenames
     String file_regex = '^' + escapeRegex(file_glob).replaceAll("\\*", ".*") + '$'
+
+    def container_image = task.container ?: 'none'
+    def panorama_version = (container_image != 'none' && container_image.contains(':')) ? container_image.tokenize(':').last() : 'unknown'
 
     """
     ${setupPanoramaAPIKeySecret(aws_secret_id, task.executor)}
@@ -86,6 +90,7 @@ process PANORAMA_GET_RAW_FILE_LIST {
 
     grep -P '${file_regex}' all_files.txt | xargs -d'\\n' printf '${web_dav_url.replaceAll("%", "%%")}/%s\\n' > download_files.txt
 
+    echo '{"program": "Panorama Java client", "version": "${panorama_version}", "container": "${container_image}"}' > panorama_version.json
     echo "Done!" # Needed for proper exit
     """
 
@@ -111,6 +116,7 @@ FILELIST
 
     grep -P '${stub_file_regex}' all_files.txt | xargs -d'\\n' printf '${web_dav_url.replaceAll("%", "%%")}/%s\\n' > download_files.txt
     touch stub.stdout stub.stderr
+    echo '{"program": "Panorama Java client", "version": "stub", "container": "stub"}' > panorama_version.json
     """
 }
 
@@ -130,10 +136,13 @@ process PANORAMA_GET_FILE {
         path("${file(web_dav_dir_url).name}"), emit: panorama_file
         path("*.stdout"), emit: stdout
         path("*.stderr"), emit: stderr
+        path("panorama_version.json"), emit: version_info
         val 'panorama', emit: citation
 
     script:
         file_name = file(web_dav_dir_url).name
+        def container_image = task.container ?: 'none'
+        def panorama_version = (container_image != 'none' && container_image.contains(':')) ? container_image.tokenize(':').last() : 'unknown'
         """
         ${setupPanoramaAPIKeySecret(aws_secret_id, task.executor)}
 
@@ -143,6 +152,7 @@ process PANORAMA_GET_FILE {
             -w "${web_dav_dir_url}" \
             -k \$PANORAMA_API_KEY \
             > >(tee "panorama-get-${file_name}.stdout") 2> >(tee "panorama-get-${file_name}.stderr" >&2)
+        echo '{"program": "Panorama Java client", "version": "${panorama_version}", "container": "${container_image}"}' > panorama_version.json
         echo "Done!" # Needed for proper exit
         """
 
@@ -150,6 +160,7 @@ process PANORAMA_GET_FILE {
     """
     touch "${file(web_dav_dir_url).name}"
     touch stub.stderr stub.stdout
+    echo '{"program": "Panorama Java client", "version": "stub", "container": "stub"}' > panorama_version.json
     """
 }
 
