@@ -59,39 +59,39 @@ process PANORAMA_GET_RAW_FILE_LIST {
     secret 'PANORAMA_API_KEY'
 
     input:
-        each web_dav_url
+        val web_dav_url
         val file_glob
         val aws_secret_id
 
     output:
-        tuple val(web_dav_url), path("*.download"), emit: raw_file_placeholders
+        path("download_files.txt"), emit: download_file_list
         path("*.stdout"), emit: stdout
         path("*.stderr"), emit: stderr
 
     script:
     // convert glob to regex that we can use to grep lines from a file of filenames
-    String regex = '^' + escapeRegex(file_glob).replaceAll("\\*", ".*") + '$'
+    String file_regex = '^' + escapeRegex(file_glob).replaceAll("\\*", ".*") + '$'
 
     """
     ${setupPanoramaAPIKeySecret(aws_secret_id, task.executor)}
 
-    echo "Running file list from Panorama..."
+    echo "Listing files from Panorama..."
         ${exec_java_command(task.memory)} \
         -l \
-        -e raw \
         -w "${web_dav_url}" \
         -k \$PANORAMA_API_KEY \
-        -o panorama_files.txt \
-        > >(tee "panorama-get-files.stdout") 2> >(tee "panorama-get-files.stderr" >&2) && \
-        grep -P '${regex}' panorama_files.txt | xargs -I % sh -c 'touch %.download'
+        -o all_files.txt \
+        > >(tee "panorama-get-file-list.stdout") 2> >(tee "panorama-get-file-list.stderr" >&2)
+
+    grep -P '${file_regex}' all_files.txt | xargs -d'\\n' printf '${web_dav_url.replaceAll("%", "%%")}/%s\\n' > download_files.txt
 
     echo "Done!" # Needed for proper exit
     """
 
     stub:
     """
-    touch stub.download
-    touch stub.stderr stub.stdout
+    echo "https://panoramaweb.org/stub/stub_file.raw" > download_files.txt
+    touch stub.stdout stub.stderr
     """
 }
 
