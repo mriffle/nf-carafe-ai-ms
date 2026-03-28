@@ -20,7 +20,7 @@ workflow get_mzmls {
 
         if(params.spectra_dir) {
 
-            if(panorama_auth_required_for_url(params.spectra_dir)) {
+            if(is_panorama_url(params.spectra_dir)) {
                 // Panorama directory: list files, filter by glob, download each
                 PANORAMA_GET_RAW_FILE_LIST(params.spectra_dir, params.spectra_dir_glob, aws_secret_id)
                 download_urls_ch = PANORAMA_GET_RAW_FILE_LIST.out.download_file_list
@@ -54,7 +54,7 @@ workflow get_mzmls {
         } else {
 
             // spectra_file: single file
-            if(panorama_auth_required_for_url(params.spectra_file)) {
+            if(is_panorama_url(params.spectra_file)) {
                 PANORAMA_GET_SPECTRA_FILE(params.spectra_file, aws_secret_id)
                 spectra_ch = PANORAMA_GET_SPECTRA_FILE.out.panorama_file
             } else {
@@ -75,6 +75,12 @@ workflow get_mzmls {
         }
 }
 
+// returns true if the url is a PanoramaWeb URL (public or private)
+def is_panorama_url(url) {
+    return url.startsWith(PANORAMA_URL)
+}
+
+// returns true if the url requires authentication (non-public Panorama folders)
 def panorama_auth_required_for_url(url) {
     return url.startsWith(PANORAMA_URL) && !url.contains("/_webdav/Panorama%20Public/")
 }

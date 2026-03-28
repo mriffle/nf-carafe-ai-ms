@@ -89,8 +89,23 @@ process PANORAMA_GET_RAW_FILE_LIST {
     """
 
     stub:
+    // convert glob to regex for stub filtering (same as script block)
+    String stub_file_regex = '^' + escapeRegex(file_glob).replaceAll("\\*", ".*") + '$'
+
     """
-    echo "https://panoramaweb.org/stub/stub_file.raw" > download_files.txt
+    # mock a file listing with various file types
+    cat > all_files.txt <<'FILELIST'
+sample1.raw
+sample2.raw
+sample3.raw
+sample1.mzML
+sample2.mzML
+sample3.mzML
+readme.txt
+notes.pdf
+FILELIST
+
+    grep -P '${stub_file_regex}' all_files.txt | xargs -d'\\n' printf '${web_dav_url.replaceAll("%", "%%")}/%s\\n' > download_files.txt
     touch stub.stdout stub.stderr
     """
 }

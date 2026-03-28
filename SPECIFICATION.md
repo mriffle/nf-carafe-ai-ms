@@ -321,7 +321,7 @@ Stub tests verify that all workflow paths are correctly wired together by runnin
 
 ```
 tests/
-├── run_stub_tests.sh        # Test runner script (10 test scenarios)
+├── run_stub_tests.sh        # Test runner script (13 test scenarios)
 ├── stub_test.config          # Nextflow config: disables Docker and reporting
 └── data/
     ├── test.mzML             # Minimal mzML for stub input
@@ -350,6 +350,9 @@ tests/
 | 8 | spectra_dir with multiple mzML files | `DIANN_SEARCH_LIB_FREE`, `CARAFE` (multiple inputs) |
 | 9 | spectra_dir with multiple RAW files | `MSCONVERT`, `DIANN_SEARCH_LIB_FREE`, `CARAFE` (multiple inputs) |
 | 10 | spectra_dir + pre-computed peptides | `CARAFE` (multiple inputs, DIA-NN skipped) |
+| 11 | Panorama spectra_dir with RAW glob | `PANORAMA_GET_RAW_FILE_LIST`, `PANORAMA_GET_FILE` (x3), `MSCONVERT` (x3), `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
+| 12 | Panorama spectra_dir with mzML glob | `PANORAMA_GET_RAW_FILE_LIST`, `PANORAMA_GET_FILE` (x3), `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
+| 13 | Panorama spectra_dir with specific glob | `PANORAMA_GET_RAW_FILE_LIST`, `PANORAMA_GET_FILE` (x1), `MSCONVERT`, `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
 
 **Running locally:**
 ```bash

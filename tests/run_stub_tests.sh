@@ -159,6 +159,36 @@ run_test "spectra_dir + pre-computed peptides (skip DIA-NN)" \
     --carafe_fasta_file "$SCRIPT_DIR/data/test.fasta" \
     --peptide_results_file "$SCRIPT_DIR/data/test_peptides.tsv"
 
+# ──────────────────────────────────────────────────────────────────────
+# Test 11: Panorama spectra_dir with RAW files (glob filters mock listing)
+# Exercises: PANORAMA_GET_RAW_FILE_LIST, PANORAMA_GET_FILE (x3),
+#            MSCONVERT (x3), DIANN_SEARCH_LIB_FREE, CARAFE
+# ──────────────────────────────────────────────────────────────────────
+run_test "Panorama spectra_dir with RAW files" \
+    --spectra_dir "https://panoramaweb.org/_webdav/Panorama%20Public/test/@files/RawFiles" \
+    --spectra_dir_glob "*.raw" \
+    --carafe_fasta_file "$SCRIPT_DIR/data/test.fasta"
+
+# ──────────────────────────────────────────────────────────────────────
+# Test 12: Panorama spectra_dir with mzML files (skips msconvert)
+# Exercises: PANORAMA_GET_RAW_FILE_LIST, PANORAMA_GET_FILE (x3),
+#            DIANN_SEARCH_LIB_FREE, CARAFE
+# ──────────────────────────────────────────────────────────────────────
+run_test "Panorama spectra_dir with mzML files" \
+    --spectra_dir "https://panoramaweb.org/_webdav/Panorama%20Public/test/@files/RawFiles" \
+    --spectra_dir_glob "*.mzML" \
+    --carafe_fasta_file "$SCRIPT_DIR/data/test.fasta"
+
+# ──────────────────────────────────────────────────────────────────────
+# Test 13: Panorama spectra_dir with specific glob pattern
+# Exercises: PANORAMA_GET_RAW_FILE_LIST (glob filters to subset),
+#            PANORAMA_GET_FILE, MSCONVERT, DIANN_SEARCH_LIB_FREE, CARAFE
+# ──────────────────────────────────────────────────────────────────────
+run_test "Panorama spectra_dir with specific glob" \
+    --spectra_dir "https://panoramaweb.org/_webdav/Panorama%20Public/test/@files/RawFiles" \
+    --spectra_dir_glob "sample1*.raw" \
+    --carafe_fasta_file "$SCRIPT_DIR/data/test.fasta"
+
 # Clean up all test artifacts
 clean
 
