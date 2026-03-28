@@ -101,17 +101,17 @@ workflow {
 
     all_versions = all_versions.mix(carafe.out.versions)
     all_version_data = all_versions.map { file ->
-        new groovy.json.JsonSlurper().parseText(file.text)
+        new LinkedHashMap(new groovy.json.JsonSlurper().parseText(file.text))
     }
 
     workflow_metadata = Channel.of(
-        ["Nextflow run at", workflow.start],
-        ["Nextflow version", nextflow.version],
-        ["Workflow git address", "${workflow.repository}"],
-        ["Workflow git revision (branch)", "${workflow.revision}"],
-        ["Workflow git commit hash", "${workflow.commitId}"],
-        ["Run session ID", workflow.sessionId],
-        ["Command line", workflow.commandLine]
+        ["Nextflow run at", workflow.start.toString()],
+        ["Nextflow version", nextflow.version.toString()],
+        ["Workflow git address", (workflow.repository ?: '').toString()],
+        ["Workflow git revision (branch)", (workflow.revision ?: '').toString()],
+        ["Workflow git commit hash", (workflow.commitId ?: '').toString()],
+        ["Run session ID", workflow.sessionId.toString()],
+        ["Command line", workflow.commandLine.toString()]
     ).collect()
 
     WRITE_VERSIONS(workflow_metadata, all_version_data.collect())
