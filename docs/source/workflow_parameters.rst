@@ -36,14 +36,14 @@ Below is a complete description of all parameters that may be included in these 
 
     This workflow can process files stored in **PanoramaWeb**. When specifying directories or file locations, any paths that begin with ``https://`` will be interpreted as being PanoramaWeb locations.
 
-    For example, to process raw files stored in PanoramaWeb, you would have the following in your pipeline.config file:
+    For example, to process a raw file stored in PanoramaWeb, you would have the following in your pipeline.config file:
 
     .. code-block:: bash
 
-        quant_spectra_dir= 'https://panoramaweb.org/_webdav/path/to/@files/RawFiles/'
+        spectra_file = 'https://panoramaweb.org/_webdav/path/to/@files/RawFiles/my_file.raw'
 
 
-    Where, ``https://panoramaweb.org/_webdav/path/to/@files/RawFiles/`` is the WebDav URL of the folder on the Panorama server.
+    Where, ``https://panoramaweb.org/_webdav/path/to/@files/RawFiles/my_file.raw`` is the WebDav URL of the file on the Panorama server.
 
 
 The ``params`` Section
@@ -67,7 +67,7 @@ The ``params`` Section
      - The final output format of the generated spectral library. Must be one of ``'diann'`` or ``'encyclopedia'``. Default: ``'diann'``
    * - 
      - ``carafe_cli_options``
-     - Command line options to pass to Carafe. Note: Do not set the ``se``, ``lf_type``, ``-db``, ``-i``, ``-o`` parameters, these are handled by the workflow. The default is to not pass any command line option and use Carafe's defaults, see https://github.com/Noble-Lab/Carafe for more details.
+     - Command line options to pass to Carafe. Note: Do not set the ``-ms``, ``-db``, ``-i``, ``-se``, ``-lf_type``, or ``-device`` parameters, these are handled by the workflow. The default is to not pass any command line option and use Carafe's defaults, see https://github.com/Noble-Lab/Carafe for more details.
    * - 
      - ``diann_fasta_file``
      - The FASTA file used by DIA-NN. If not set ``carafe_fasta_file`` will be used. Default: not set.

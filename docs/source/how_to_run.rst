@@ -60,7 +60,7 @@ Follow these steps to run a workflow:
 3. Run the workflow.
 
    Nextflow workflows may be run with a variety of *executors*. Executors are what run the actual steps of the pipeline; that is, they are
-   the systems on which steps like Encyclopedia and msconvert will be run. Examples of executors are your local computer, a computer cluster, or
+   the systems on which steps like DIA-NN and Carafe will be run. Examples of executors are your local computer, a computer cluster, or
    AWS Batch. The example below describes how to run the workflow using your local system or AWS Batch as the executor.
 
 
