@@ -36,6 +36,10 @@ if [ "${1:-}" = "clean" ]; then
     exit 0
 fi
 
+# Set up a dummy Panorama API key secret for Panorama stub tests.
+# Nextflow 24+ enforces the 'secret' directive even in stub mode.
+nextflow secrets set PANORAMA_API_KEY "stub_test_key" 2>/dev/null || true
+
 TESTS_RUN=0
 TESTS_PASSED=0
 TESTS_FAILED=0
