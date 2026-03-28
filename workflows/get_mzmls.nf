@@ -3,6 +3,7 @@ include { PANORAMA_GET_FILE as PANORAMA_GET_SPECTRA_FILE } from "../modules/pano
 include { PANORAMA_GET_FILE as PANORAMA_GET_SPECTRA_DIR_FILE } from "../modules/panorama"
 include { PANORAMA_GET_RAW_FILE_LIST } from "../modules/panorama"
 include { MSCONVERT } from "../modules/msconvert"
+include { UNZIP_BRUKER_DATA } from "../modules/bruker"
 
 PANORAMA_URL = 'https://panoramaweb.org'
 
@@ -17,11 +18,18 @@ workflow get_mzmls {
 
         spectra_ch = null
         needs_msconvert = false
+        needs_unzip = false
 
         if(params.spectra_dir) {
 
             if(is_panorama_url(params.spectra_dir)) {
                 // Panorama directory: list files, filter by glob, download each
+                // Bruker .d directories cannot be downloaded from Panorama, only .d.zip files
+                def glob_lower = params.spectra_dir_glob.toLowerCase()
+                if(glob_lower.endsWith('.d') && !glob_lower.endsWith('.d.zip')) {
+                    error "Bruker .d directories cannot be downloaded from PanoramaWeb. Use a glob pattern matching .d.zip files instead."
+                }
+
                 PANORAMA_GET_RAW_FILE_LIST(params.spectra_dir, params.spectra_dir_glob, aws_secret_id)
                 download_urls_ch = PANORAMA_GET_RAW_FILE_LIST.out.download_file_list
                     .splitText()
@@ -31,10 +39,11 @@ workflow get_mzmls {
                 PANORAMA_GET_SPECTRA_DIR_FILE(download_urls_ch, aws_secret_id)
                 spectra_ch = PANORAMA_GET_SPECTRA_DIR_FILE.out.panorama_file
 
-                needs_msconvert = !params.spectra_dir_glob.toLowerCase().endsWith('mzml')
+                needs_msconvert = glob_lower.endsWith('.raw')
+                needs_unzip = glob_lower.endsWith('.d.zip')
             } else {
                 // Local directory: glob for files and validate
-                def matched_files = file("${params.spectra_dir}/${params.spectra_dir_glob}")
+                def matched_files = file("${params.spectra_dir}/${params.spectra_dir_glob}", type: 'any')
                 if(matched_files instanceof Path) matched_files = [matched_files]
                 if(!matched_files) matched_files = []
 
@@ -42,12 +51,18 @@ workflow get_mzmls {
                     error "No files matching '${params.spectra_dir_glob}' found in '${params.spectra_dir}'"
                 }
 
-                def exts = matched_files.collect { it.extension.toLowerCase() }.unique()
-                if(exts.size() != 1 || !(exts[0] in ['raw', 'mzml'])) {
-                    error "All files matching '${params.spectra_dir_glob}' in '${params.spectra_dir}' must be .raw or .mzML files of the same type. Found extensions: ${exts.join(', ')}"
+                def exts = matched_files.collect { f ->
+                    def name = f.name.toLowerCase()
+                    if (name.endsWith('.d.zip')) return 'd.zip'
+                    return f.extension.toLowerCase()
+                }.unique()
+
+                if(exts.size() != 1 || !(exts[0] in ['raw', 'mzml', 'd', 'd.zip'])) {
+                    error "All files matching '${params.spectra_dir_glob}' in '${params.spectra_dir}' must be .raw, .mzML, .d, or .d.zip files of the same type. Found extensions: ${exts.join(', ')}"
                 }
 
                 needs_msconvert = exts[0] == 'raw'
+                needs_unzip = exts[0] == 'd.zip'
                 spectra_ch = Channel.fromList(matched_files)
             }
 
@@ -55,13 +70,19 @@ workflow get_mzmls {
 
             // spectra_file: single file
             if(is_panorama_url(params.spectra_file)) {
+                def spectra_lower = params.spectra_file.toLowerCase()
+                if(spectra_lower.endsWith('.d') && !spectra_lower.endsWith('.d.zip')) {
+                    error "Bruker .d directories cannot be downloaded from PanoramaWeb. Use .d.zip files instead."
+                }
                 PANORAMA_GET_SPECTRA_FILE(params.spectra_file, aws_secret_id)
                 spectra_ch = PANORAMA_GET_SPECTRA_FILE.out.panorama_file
             } else {
                 spectra_ch = Channel.of(file(params.spectra_file, checkIfExists: true))
             }
 
-            needs_msconvert = !params.spectra_file.toLowerCase().endsWith('mzml')
+            def spectra_name = params.spectra_file.toLowerCase()
+            needs_msconvert = spectra_name.endsWith('.raw')
+            needs_unzip = spectra_name.endsWith('.d.zip')
         }
 
         if(needs_msconvert) {
@@ -70,6 +91,8 @@ workflow get_mzmls {
                 params.msconvert.do_demultiplex,
                 params.msconvert.do_simasspectra
             )
+        } else if(needs_unzip) {
+            mzml_ch = UNZIP_BRUKER_DATA(spectra_ch)
         } else {
             mzml_ch = spectra_ch
         }

@@ -101,6 +101,9 @@ sample3.raw
 sample1.mzML
 sample2.mzML
 sample3.mzML
+sample1.d.zip
+sample2.d.zip
+sample3.d.zip
 readme.txt
 notes.pdf
 FILELIST

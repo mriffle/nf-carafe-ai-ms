@@ -51,6 +51,8 @@ Below is a complete description of all parameters that may be included in these 
 
     Where the URL is the WebDav URL of the file or directory on the Panorama server.
 
+    **Bruker data on PanoramaWeb:** Only ``.d.zip`` files can be downloaded from PanoramaWeb (not ``.d`` directories). Use a glob pattern like ``*.d.zip`` when processing Bruker data from PanoramaWeb.
+
 
 The ``params`` Section
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -67,13 +69,13 @@ The ``params`` Section
      - FASTA file used by Carafe to generate final spectral library.
    * - \*
      - ``spectra_file``
-     - Path to a single raw or mzML file to process. Mutually exclusive with ``spectra_dir``.
+     - Path to a single spectra file or directory to process. Supported types: Thermo RAW (``.raw``), mzML (``.mzML``), Bruker raw directory (``.d``), or Bruker zipped raw (``.d.zip``). May be a local path, S3 URI, or PanoramaWeb URL. Note: Bruker ``.d`` directories cannot be downloaded from PanoramaWeb; use ``.d.zip`` files instead. Mutually exclusive with ``spectra_dir``.
    * - \*
      - ``spectra_dir``
-     - Path to a directory containing raw or mzML files (local path or PanoramaWeb WebDAV URL). Mutually exclusive with ``spectra_file``. Use with ``spectra_dir_glob`` to select which files to process.
+     - Path to a directory containing spectra files (local path or PanoramaWeb WebDAV URL). Supported file types: ``.raw``, ``.mzML``, ``.d``, or ``.d.zip``. Note: Bruker ``.d`` directories cannot be downloaded from PanoramaWeb; use ``.d.zip`` files instead. Mutually exclusive with ``spectra_file``. Use with ``spectra_dir_glob`` to select which files to process.
    * -
      - ``spectra_dir_glob``
-     - Glob pattern to select files from ``spectra_dir``. All matched files must have the same extension (``.raw`` or ``.mzML``). Default: ``'*.raw'``
+     - Glob pattern to select files from ``spectra_dir``. All matched files must be the same type (``.raw``, ``.mzML``, ``.d``, or ``.d.zip``). Default: ``'*.raw'``
    * -
      - ``output_format``
      - The final output format of the generated spectral library. Must be one of ``'diann'`` or ``'encyclopedia'``. Default: ``'diann'``

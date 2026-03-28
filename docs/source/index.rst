@@ -5,10 +5,11 @@ This workflow is designed to go from RAW files to an AI-enhanced spectral librar
 the Carafe tool for experiment-specific in silico spectral library generation for DIA data
 analysis. See https://github.com/Noble-Lab/Carafe for more information.
 
-This workflow supports starting with a RAW and FASTA file and will run msconvert and DIA-NN
-to generate a peptide report for input to Carafe; or you may start with a peptide report
-previously generated with DIA-NN to skip running DIA-NN. See :doc:`workflow_parameters` for
-more information.
+This workflow supports starting with Thermo RAW (``.raw``), Bruker raw (``.d`` or ``.d.zip``),
+or mzML files and a FASTA file. It will run msconvert (for Thermo RAW) or unzip (for Bruker
+``.d.zip``) as needed, and DIA-NN to generate a peptide report for input to Carafe; or you may
+start with a peptide report previously generated with DIA-NN to skip running DIA-NN. See
+:doc:`workflow_parameters` for more information.
 
 Please use the links below to navigate to pages describing how to install and run the workflow,
 how to retrieve results, and how to set up AWS Batch to run the workflow in the cloud.

@@ -36,7 +36,11 @@ The workflow is made up of the following software components, each may be run mu
 
 *  **msconvert** (https://proteowizard.sourceforge.io/)
 
-   If users supply RAW files as input, they will be converted to mzML using *msconvert*.
+   If users supply Thermo RAW files (``.raw``) as input, they will be converted to mzML using *msconvert*.
+
+*  **unzip** (Bruker data extraction)
+
+   If users supply Bruker ``.d.zip`` files as input, they will be unzipped to ``.d`` directories for processing. Bruker ``.d`` directories may also be supplied directly as input (local paths only; PanoramaWeb requires ``.d.zip`` files).
 
 *  **DIA-NN** (https://github.com/vdemichev/DiaNN)
 

@@ -24,9 +24,9 @@ The first line shows the version of Nextflow you are running. The second line sh
 you are running. The third line shows the executor you are using. An executor in Nextflow describes the actual
 system the steps of the workflow are running on. 
 The next several lines show the actual steps of the workflow as they are running. If a particular step is run
-multiple times (e.g., converting many RAW files to mzML using msconvert), the percent complete shows the
-percentage of the RAW files that have been converted. The final four lines appear when the workflow completes,
-showing the completion time, how long it took, and the number
+multiple times (e.g., converting many RAW files to mzML using msconvert or unzipping Bruker ``.d.zip`` files),
+the percent complete shows the percentage of the files that have been processed. The final four lines appear
+when the workflow completes, showing the completion time, how long it took, and the number
 of steps that succeeded.
 
 Workflow Log

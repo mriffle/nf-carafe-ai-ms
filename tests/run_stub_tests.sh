@@ -164,7 +164,41 @@ run_test "spectra_dir + pre-computed peptides (skip DIA-NN)" \
     --peptide_results_file "$SCRIPT_DIR/data/test_peptides.tsv"
 
 # ──────────────────────────────────────────────────────────────────────
-# Test 11: Panorama spectra_dir with RAW files (glob filters mock listing)
+# Test 11: Bruker .d directory as spectra_file (pass through, no conversion)
+# Exercises: DIANN_SEARCH_LIB_FREE, CARAFE
+# ──────────────────────────────────────────────────────────────────────
+run_test "Bruker .d directory as spectra_file" \
+    --spectra_file "$SCRIPT_DIR/data/test.d" \
+    --carafe_fasta_file "$SCRIPT_DIR/data/test.fasta"
+
+# ──────────────────────────────────────────────────────────────────────
+# Test 12: Bruker .d.zip file as spectra_file (triggers unzip)
+# Exercises: UNZIP_BRUKER_DATA, DIANN_SEARCH_LIB_FREE, CARAFE
+# ──────────────────────────────────────────────────────────────────────
+run_test "Bruker .d.zip as spectra_file (unzip + DIA-NN + Carafe)" \
+    --spectra_file "$SCRIPT_DIR/data/test.d.zip" \
+    --carafe_fasta_file "$SCRIPT_DIR/data/test.fasta"
+
+# ──────────────────────────────────────────────────────────────────────
+# Test 13: spectra_dir with multiple Bruker .d directories
+# Exercises: DIANN_SEARCH_LIB_FREE, CARAFE (multiple inputs)
+# ──────────────────────────────────────────────────────────────────────
+run_test "spectra_dir with multiple Bruker .d directories" \
+    --spectra_dir "$SCRIPT_DIR/data/bruker_d_dir" \
+    --spectra_dir_glob "*.d" \
+    --carafe_fasta_file "$SCRIPT_DIR/data/test.fasta"
+
+# ──────────────────────────────────────────────────────────────────────
+# Test 14: spectra_dir with multiple Bruker .d.zip files (triggers unzip)
+# Exercises: UNZIP_BRUKER_DATA, DIANN_SEARCH_LIB_FREE, CARAFE (multiple inputs)
+# ──────────────────────────────────────────────────────────────────────
+run_test "spectra_dir with multiple Bruker .d.zip files" \
+    --spectra_dir "$SCRIPT_DIR/data/bruker_zip_dir" \
+    --spectra_dir_glob "*.d.zip" \
+    --carafe_fasta_file "$SCRIPT_DIR/data/test.fasta"
+
+# ──────────────────────────────────────────────────────────────────────
+# Test 15: Panorama spectra_dir with RAW files (glob filters mock listing)
 # Exercises: PANORAMA_GET_RAW_FILE_LIST, PANORAMA_GET_FILE (x3),
 #            MSCONVERT (x3), DIANN_SEARCH_LIB_FREE, CARAFE
 # ──────────────────────────────────────────────────────────────────────
@@ -174,7 +208,7 @@ run_test "Panorama spectra_dir with RAW files" \
     --carafe_fasta_file "$SCRIPT_DIR/data/test.fasta"
 
 # ──────────────────────────────────────────────────────────────────────
-# Test 12: Panorama spectra_dir with mzML files (skips msconvert)
+# Test 16: Panorama spectra_dir with mzML files (skips msconvert)
 # Exercises: PANORAMA_GET_RAW_FILE_LIST, PANORAMA_GET_FILE (x3),
 #            DIANN_SEARCH_LIB_FREE, CARAFE
 # ──────────────────────────────────────────────────────────────────────
@@ -184,13 +218,23 @@ run_test "Panorama spectra_dir with mzML files" \
     --carafe_fasta_file "$SCRIPT_DIR/data/test.fasta"
 
 # ──────────────────────────────────────────────────────────────────────
-# Test 13: Panorama spectra_dir with specific glob pattern
+# Test 17: Panorama spectra_dir with specific glob pattern
 # Exercises: PANORAMA_GET_RAW_FILE_LIST (glob filters to subset),
 #            PANORAMA_GET_FILE, MSCONVERT, DIANN_SEARCH_LIB_FREE, CARAFE
 # ──────────────────────────────────────────────────────────────────────
 run_test "Panorama spectra_dir with specific glob" \
     --spectra_dir "https://panoramaweb.org/_webdav/Panorama%20Public/test/@files/RawFiles" \
     --spectra_dir_glob "sample1*.raw" \
+    --carafe_fasta_file "$SCRIPT_DIR/data/test.fasta"
+
+# ──────────────────────────────────────────────────────────────────────
+# Test 18: Panorama spectra_dir with Bruker .d.zip files (triggers unzip)
+# Exercises: PANORAMA_GET_RAW_FILE_LIST, PANORAMA_GET_FILE (x3),
+#            UNZIP_BRUKER_DATA (x3), DIANN_SEARCH_LIB_FREE, CARAFE
+# ──────────────────────────────────────────────────────────────────────
+run_test "Panorama spectra_dir with Bruker .d.zip files" \
+    --spectra_dir "https://panoramaweb.org/_webdav/Panorama%20Public/test/@files/RawFiles" \
+    --spectra_dir_glob "*.d.zip" \
     --carafe_fasta_file "$SCRIPT_DIR/data/test.fasta"
 
 # Clean up all test artifacts

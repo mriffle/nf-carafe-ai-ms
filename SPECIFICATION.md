@@ -4,7 +4,7 @@
 
 nf-carafe-ai-ms is a **Nextflow DSL2 workflow** for generating AI-enhanced experiment-specific spectral libraries for Data-Independent Acquisition (DIA) mass spectrometry analysis. It uses the [Carafe](https://github.com/Noble-Lab/Carafe) tool, which leverages AI to produce in silico spectral libraries from a protein FASTA database and DIA experiment data.
 
-The workflow automates the full pipeline: acquiring input files (locally, from S3, or from PanoramaWeb), converting raw mass spectrometry data to mzML, running DIA-NN for peptide identification, and feeding those results to Carafe for enhanced spectral library generation. Output libraries can be produced in either DIA-NN TSV or EncyclopeDIA DLIB format.
+The workflow automates the full pipeline: acquiring input files (locally, from S3, or from PanoramaWeb), converting raw mass spectrometry data to mzML (or unzipping Bruker `.d.zip` archives to `.d` directories), running DIA-NN for peptide identification, and feeding those results to Carafe for enhanced spectral library generation. Output libraries can be produced in either DIA-NN TSV or EncyclopeDIA DLIB format.
 
 **Author:** Michael Riffle
 **License:** Apache 2.0
@@ -21,6 +21,9 @@ The workflow executes these steps in order:
 ```
 1. Parameter Validation
    - Either spectra_file or spectra_dir is required (mutually exclusive)
+   - spectra_file may be a .raw, .mzML, .d directory, or .d.zip file
+   - spectra_dir files (after glob matching) must all be the same type: .raw, .mzML, .d, or .d.zip
+   - Bruker .d directories cannot be downloaded from PanoramaWeb; use .d.zip files instead
    - carafe_fasta_file (required)
    - output_format must be 'diann' or 'encyclopedia'
 
@@ -34,11 +37,13 @@ The workflow executes these steps in order:
 
 4. get_mzmls (subworkflow)
    - Supports single file (spectra_file) or directory of files (spectra_dir + spectra_dir_glob)
-   - For spectra_dir: globs the directory for matching files, validates all are .raw or .mzML
-   - For PanoramaWeb directories: uses PANORAMA_GET_RAW_FILE_LIST to list and filter files, then downloads each
-   - Converts RAW -> mzML via msconvert (skipped if input is already mzML)
+   - For spectra_dir: globs the directory for matching files (using `type: 'any'` to match directories), validates all are .raw, .mzML, .d, or .d.zip
+   - For PanoramaWeb directories: uses PANORAMA_GET_RAW_FILE_LIST to list and filter files, then downloads each. Rejects .d directory globs (only .d.zip allowed from Panorama).
+   - Converts RAW -> mzML via msconvert (skipped if input is already mzML or Bruker data)
+   - Unzips .d.zip -> .d via UNZIP_BRUKER_DATA (ubuntu container)
+   - Passes .mzML and .d inputs through directly
    - Supports caching of converted mzML files
-   - Emits a channel of one or more mzML files
+   - Emits a channel of one or more mzML files or .d directories
 
 5. diann_search (subworkflow, conditional)
    - Skipped if peptide_results_file parameter is provided
@@ -46,7 +51,7 @@ The workflow executes these steps in order:
    - Produces precursor TSV used as Carafe input
 
 6. carafe (subworkflow)
-   - Collects all mzML files and runs Carafe AI tool with `-ms "."` to process them all
+   - Collects all mzML files and/or .d directories and runs Carafe AI tool with `-ms "."` to process them all
    - Outputs carafe_spectral_library.tsv
 
 7. ENCYCLOPEDIA_TSV_TO_DLIB (conditional)
@@ -69,6 +74,7 @@ nf-carafe-ai-ms/
 │   └── base.config                # Process resource labels and retry logic
 ├── modules/                       # Nextflow process definitions (one per tool)
 │   ├── aws.nf                     # GET_AWS_USER_ID, BUILD_AWS_SECRETS
+│   ├── bruker.nf                  # UNZIP_BRUKER_DATA (.d.zip -> .d)
 │   ├── carafe.nf                  # CARAFE process
 │   ├── diann.nf                   # DIANN_SEARCH_LIB_FREE, BLIB_BUILD_LIBRARY
 │   ├── encyclopedia.nf            # ENCYCLOPEDIA_TSV_TO_DLIB
@@ -112,12 +118,20 @@ nf-carafe-ai-ms/
 │       ├── test.fasta
 │       ├── test_peptides.tsv
 │       ├── test.raw
+│       ├── test.d/               # Empty Bruker .d directory for spectra_file tests
+│       ├── test.d.zip            # Zip containing test.d/ for spectra_file tests
 │       ├── mzml_dir/             # Directory with multiple mzML files for spectra_dir tests
 │       │   ├── test1.mzML
 │       │   └── test2.mzML
-│       └── raw_dir/              # Directory with multiple RAW files for spectra_dir tests
-│           ├── test1.raw
-│           └── test2.raw
+│       ├── raw_dir/              # Directory with multiple RAW files for spectra_dir tests
+│       │   ├── test1.raw
+│       │   └── test2.raw
+│       ├── bruker_d_dir/         # Directory with multiple Bruker .d directories for spectra_dir tests
+│       │   ├── test1.d/
+│       │   └── test2.d/
+│       └── bruker_zip_dir/       # Directory with multiple Bruker .d.zip files for spectra_dir tests
+│           ├── test1.d.zip
+│           └── test2.d.zip
 ├── README.md
 └── LICENSE                        # Apache 2.0
 ```
@@ -166,15 +180,17 @@ Each module file in `modules/` defines one or more Nextflow processes wrapping a
 | Module | Processes | Container | Purpose |
 |--------|-----------|-----------|---------|
 | `aws.nf` | `GET_AWS_USER_ID`, `BUILD_AWS_SECRETS` | (no container; runs locally) | AWS identity and Secrets Manager for PanoramaWeb API keys |
+| `bruker.nf` | `UNZIP_BRUKER_DATA` | ubuntu:22.04 | Unzip Bruker `.d.zip` archives to `.d` directories |
 | `panorama.nf` | `PANORAMA_GET_FILE`, `PANORAMA_GET_RAW_FILE`, `PANORAMA_GET_RAW_FILE_LIST` | panorama-client:1.1.0 | Download files from PanoramaWeb via WebDAV, with caching. `PANORAMA_GET_RAW_FILE_LIST` is used by `get_mzmls` when `spectra_dir` is a PanoramaWeb URL. |
 | `msconvert.nf` | `MSCONVERT` | proteowizard:3.0.24172 | Convert RAW files to mzML (runs via wine) |
 | `diann.nf` | `DIANN_SEARCH_LIB_FREE`, `BLIB_BUILD_LIBRARY` | diann:1.8.1 (note: `BLIB_BUILD_LIBRARY` references `params.images.bibliospec` which is not defined in `container_images.config`) | Library-free DIA-NN peptide identification |
-| `carafe.nf` | `CARAFE` | carafe:0.0.1-3 | AI-enhanced spectral library generation (Java JAR). Uses `-ms "."` to process all mzML files in the working directory. |
+| `carafe.nf` | `CARAFE` | carafe:2.0.0 | AI-enhanced spectral library generation (Java JAR). Uses `-ms "."` to process all mzML files and Bruker `.d` directories in the working directory. |
 | `encyclopedia.nf` | `ENCYCLOPEDIA_TSV_TO_DLIB` | encyclopedia:2.12.30-2 | Convert Carafe TSV to EncyclopeDIA DLIB format |
 
 ### Notable Implementation Details
 
-- **Carafe module**: Detects Apptainer/Singularity vs Docker and conditionally activates a conda environment. Allocates Java heap as `(task.memory - 1 GB)`.
+- **Bruker module**: Unzips `.d.zip` files using the `ubuntu` container. Output is the `.d` directory (derived from `zip_file.baseName`).
+- **Carafe module**: Detects Apptainer/Singularity vs Docker and conditionally activates a conda environment. Allocates Java heap as `(task.memory - 1 GB)`. Accepts both mzML files and Bruker `.d` directories as input (staged into the work directory and discovered via `-ms "."`).
 - **Panorama module**: Uses `PanoramaClient.jar` for WebDAV access. On AWS, retrieves API keys from Secrets Manager. `PANORAMA_GET_RAW_FILE` uses `storeDir` for file caching; `PANORAMA_GET_FILE` does not cache (used for FASTA, report, and spectra file downloads). `PANORAMA_GET_RAW_FILE_LIST` lists files on a PanoramaWeb directory, filters by a glob-derived regex, and outputs `download_files.txt` with full download URLs. The `panorama_auth_required_for_url()` helper is duplicated across `main.nf`, `get_input_files.nf`, and `get_mzmls.nf`.
 - **msconvert module**: Caches output mzML files using `storeDir` keyed by `workflow.commitId` and demux/simasspectra settings.
 - **All modules**: Include `stub` blocks for dry-run testing of workflow structure.
@@ -186,9 +202,9 @@ Each module file in `modules/` defines one or more Nextflow processes wrapping a
 | Subworkflow | File | Purpose |
 |-------------|------|---------|
 | `get_input_files` | `workflows/get_input_files.nf` | Acquires FASTA files and peptide reports; handles PanoramaWeb downloads vs local files. Exports `param_to_list()` utility. |
-| `get_mzmls` | `workflows/get_mzmls.nf` | Acquires spectra files (single via `spectra_file` or multiple via `spectra_dir` + glob) and converts RAW to mzML if needed. For PanoramaWeb directories, uses `PANORAMA_GET_RAW_FILE_LIST` to list and filter files, then `PANORAMA_GET_FILE` to download each. For local directories, globs files and validates extensions. |
+| `get_mzmls` | `workflows/get_mzmls.nf` | Acquires spectra files (single via `spectra_file` or multiple via `spectra_dir` + glob), converts RAW to mzML if needed, and unzips `.d.zip` to `.d` if needed. For PanoramaWeb directories, uses `PANORAMA_GET_RAW_FILE_LIST` to list and filter files, then `PANORAMA_GET_FILE` to download each (`.d` directories rejected for Panorama; only `.d.zip` allowed). For local directories, globs files/directories (with `type: 'any'`) and validates extensions. |
 | `diann_search` | `workflows/diann_search.nf` | Runs DIA-NN in library-free mode; outputs precursor TSV and spectral library. |
-| `carafe` | `workflows/carafe.nf` | Collects all mzML files and runs Carafe with `-ms "."` to process them all, along with FASTA and peptide results. |
+| `carafe` | `workflows/carafe.nf` | Collects all mzML files and/or Bruker `.d` directories and runs Carafe with `-ms "."` to process them all, along with FASTA and peptide results. |
 | `save_run_details` | `workflows/save_run_details.nf` | Collects version info and run metadata (currently disabled in main.nf). Also defines the `WRITE_VERSION_INFO` process inline (not in a module file). |
 
 ---
@@ -198,8 +214,8 @@ Each module file in `modules/` defines one or more Nextflow processes wrapping a
 ### Required Parameters
 | Parameter | Description |
 |-----------|-------------|
-| `spectra_file` | Path to a single RAW or mzML file (local path, S3 URI, or PanoramaWeb URL). Mutually exclusive with `spectra_dir`. |
-| `spectra_dir` | Path to a directory containing RAW or mzML files (local path or PanoramaWeb WebDAV URL). Mutually exclusive with `spectra_file`. |
+| `spectra_file` | Path to a single RAW, mzML, Bruker `.d` directory, or `.d.zip` file (local path, S3 URI, or PanoramaWeb URL). Bruker `.d` directories cannot be used with PanoramaWeb URLs. Mutually exclusive with `spectra_dir`. |
+| `spectra_dir` | Path to a directory containing RAW, mzML, Bruker `.d`, or `.d.zip` files (local path or PanoramaWeb WebDAV URL). Bruker `.d` directories cannot be used with PanoramaWeb URLs. Mutually exclusive with `spectra_file`. |
 | `carafe_fasta_file` | Protein FASTA file for Carafe (local path or PanoramaWeb URL) |
 
 *Note: Either `spectra_file` or `spectra_dir` must be provided, but not both.*
@@ -207,7 +223,7 @@ Each module file in `modules/` defines one or more Nextflow processes wrapping a
 ### Optional Parameters
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `spectra_dir_glob` | `'*.raw'` | Glob pattern to select files from `spectra_dir`. All matched files must have the same extension (.raw or .mzML). |
+| `spectra_dir_glob` | `'*.raw'` | Glob pattern to select files from `spectra_dir`. All matched files must have the same extension (.raw, .mzML, .d, or .d.zip). |
 | `output_format` | `'diann'` | Output format: `'diann'` (TSV) or `'encyclopedia'` (DLIB) |
 | `peptide_results_file` | `null` | Pre-computed DIA-NN results; skips DIA-NN search if provided |
 | `diann_fasta_file` | `null` | Separate FASTA for DIA-NN; uses `carafe_fasta_file` if null |
@@ -232,9 +248,9 @@ All tools run in Docker containers from the `quay.io/protio/` registry:
 
 | Image Key | Image URI | Tool |
 |-----------|-----------|------|
-| `ubuntu` | `ubuntu:22.04` | General utilities |
+| `ubuntu` | `ubuntu:22.04` | General utilities (Bruker .d.zip extraction) |
 | `diann` | `quay.io/protio/diann:1.8.1` | DIA-NN |
-| `carafe` | `quay.io/protio/carafe:0.0.1-3` | Carafe |
+| `carafe` | `quay.io/protio/carafe:2.0.0` | Carafe |
 | `panorama_client` | `quay.io/protio/panorama-client:1.1.0` | PanoramaWeb client |
 | `encyclopedia` | `quay.io/protio/encyclopedia:2.12.30-2` | EncyclopeDIA |
 | `proteowizard` | `quay.io/protio/pwiz-skyline-i-agree-to-the-vendor-licenses:3.0.24172-63d00b1` | msconvert |
@@ -321,19 +337,27 @@ Stub tests verify that all workflow paths are correctly wired together by runnin
 
 ```
 tests/
-├── run_stub_tests.sh        # Test runner script (13 test scenarios)
+├── run_stub_tests.sh        # Test runner script (18 test scenarios)
 ├── stub_test.config          # Nextflow config: disables Docker and reporting
 └── data/
     ├── test.mzML             # Minimal mzML for stub input
     ├── test.fasta            # Minimal FASTA for stub input
     ├── test_peptides.tsv     # Minimal DIA-NN report for stub input
     ├── test.raw              # Empty RAW file for msconvert path
+    ├── test.d/               # Empty Bruker .d directory for spectra_file tests
+    ├── test.d.zip            # Zip containing test.d/ for spectra_file tests
     ├── mzml_dir/             # Directory with multiple mzML files for spectra_dir tests
     │   ├── test1.mzML
     │   └── test2.mzML
-    └── raw_dir/              # Directory with multiple RAW files for spectra_dir tests
-        ├── test1.raw
-        └── test2.raw
+    ├── raw_dir/              # Directory with multiple RAW files for spectra_dir tests
+    │   ├── test1.raw
+    │   └── test2.raw
+    ├── bruker_d_dir/         # Directory with multiple Bruker .d directories for spectra_dir tests
+    │   ├── test1.d/
+    │   └── test2.d/
+    └── bruker_zip_dir/       # Directory with multiple Bruker .d.zip files for spectra_dir tests
+        ├── test1.d.zip
+        └── test2.d.zip
 ```
 
 **Test scenarios** (in `tests/run_stub_tests.sh`):
@@ -350,9 +374,14 @@ tests/
 | 8 | spectra_dir with multiple mzML files | `DIANN_SEARCH_LIB_FREE`, `CARAFE` (multiple inputs) |
 | 9 | spectra_dir with multiple RAW files | `MSCONVERT`, `DIANN_SEARCH_LIB_FREE`, `CARAFE` (multiple inputs) |
 | 10 | spectra_dir + pre-computed peptides | `CARAFE` (multiple inputs, DIA-NN skipped) |
-| 11 | Panorama spectra_dir with RAW glob | `PANORAMA_GET_RAW_FILE_LIST`, `PANORAMA_GET_FILE` (x3), `MSCONVERT` (x3), `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
-| 12 | Panorama spectra_dir with mzML glob | `PANORAMA_GET_RAW_FILE_LIST`, `PANORAMA_GET_FILE` (x3), `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
-| 13 | Panorama spectra_dir with specific glob | `PANORAMA_GET_RAW_FILE_LIST`, `PANORAMA_GET_FILE` (x1), `MSCONVERT`, `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
+| 11 | Bruker .d directory as spectra_file | `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
+| 12 | Bruker .d.zip file as spectra_file | `UNZIP_BRUKER_DATA`, `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
+| 13 | spectra_dir with multiple Bruker .d directories | `DIANN_SEARCH_LIB_FREE`, `CARAFE` (multiple inputs) |
+| 14 | spectra_dir with multiple Bruker .d.zip files | `UNZIP_BRUKER_DATA`, `DIANN_SEARCH_LIB_FREE`, `CARAFE` (multiple inputs) |
+| 15 | Panorama spectra_dir with RAW glob | `PANORAMA_GET_RAW_FILE_LIST`, `PANORAMA_GET_FILE` (x3), `MSCONVERT` (x3), `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
+| 16 | Panorama spectra_dir with mzML glob | `PANORAMA_GET_RAW_FILE_LIST`, `PANORAMA_GET_FILE` (x3), `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
+| 17 | Panorama spectra_dir with specific glob | `PANORAMA_GET_RAW_FILE_LIST`, `PANORAMA_GET_FILE` (x1), `MSCONVERT`, `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
+| 18 | Panorama spectra_dir with Bruker .d.zip glob | `PANORAMA_GET_RAW_FILE_LIST`, `PANORAMA_GET_FILE` (x3), `UNZIP_BRUKER_DATA` (x3), `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
 
 **Running locally:**
 ```bash
@@ -375,6 +404,22 @@ When modifying existing processes or adding new ones:
 
 ---
 
+## Documentation Update Requirements
+
+When implementing new features or making changes that affect user-facing behavior, the following documentation **must** be updated as part of the same change:
+
+1. **`SPECIFICATION.md`** — Update all affected sections: workflow pipeline, project structure, modules, subworkflows, parameters, test scenarios, container images, and known notes.
+2. **`docs/source/workflow_parameters.rst`** — Update parameter descriptions if input types, defaults, or validation rules change.
+3. **`docs/source/overview.rst`** — Update the workflow components section if new tools or processing steps are added.
+4. **`docs/source/index.rst`** — Update the introductory description if the scope of supported input types changes.
+5. **`docs/source/results.rst`** — Update if new output files or directories are produced.
+6. **`README.md`** — Update if the project scope or high-level description changes significantly.
+7. **`tests/run_stub_tests.sh`** — Add test scenarios covering new workflow paths (already required by "Requirements When Changing or Adding Processes").
+
+Failure to update documentation alongside code changes results in specification drift and user confusion. Treat documentation as a first-class deliverable, not a follow-up task.
+
+---
+
 ## Known Notes
 
 - The `save_run_details` subworkflow is included but currently disabled (commented out in `main.nf`).
@@ -383,4 +428,4 @@ When modifying existing processes or adding new ones:
 - The `DESTROY_AWS_SECRETS` process in `modules/aws.nf` is commented out.
 - The header comment in `nextflow.config` references `nf-maccoss-trex`, which is a legacy project name.
 - The `panorama_auth_required_for_url()` function is duplicated in three files: `main.nf`, `workflows/get_input_files.nf`, and `workflows/get_mzmls.nf`.
-- The Carafe process hardcodes `-se "DIA-NN"` (search engine), `-device cpu`, and `-ms "."` (processes all mzML files in the working directory). It renames Carafe's native output (`SkylineAI_spectral_library.tsv`) to `carafe_spectral_library.tsv`.
+- The Carafe process hardcodes `-se "DIA-NN"` (search engine), `-device cpu`, and `-ms "."` (processes all mzML files and Bruker `.d` directories in the working directory). It renames Carafe's native output (`SkylineAI_spectral_library.tsv`) to `carafe_spectral_library.tsv`.
