@@ -98,6 +98,17 @@ nf-carafe-ai-ms/
 │   ├── make.bat
 │   └── requirements.txt           # sphinx==7.1.2, sphinx_rtd_theme==1.3.0
 ├── .readthedocs.yaml              # ReadTheDocs build configuration
+├── .github/
+│   └── workflows/
+│       └── stub-tests.yml         # GitHub Actions CI: stub tests on every push
+├── tests/
+│   ├── run_stub_tests.sh          # Stub test runner (7 scenarios)
+│   ├── stub_test.config           # Nextflow config for stub testing
+│   └── data/                      # Minimal dummy input files for stub tests
+│       ├── test.mzML
+│       ├── test.fasta
+│       ├── test_peptides.tsv
+│       └── test.raw
 ├── README.md
 └── LICENSE                        # Apache 2.0
 ```
@@ -285,6 +296,60 @@ The workflow supports fetching input files from [PanoramaWeb](https://panoramawe
 
 ---
 
+## Testing
+
+### Stub Tests
+
+Every process in the project **must** have a `stub:` block that produces all declared outputs using only basic shell commands (`touch`, `echo`, `mkdir`). Stubs must **not** depend on container-specific binaries (e.g., `diann`, `java`) so they can run without Docker.
+
+Stub tests verify that all workflow paths are correctly wired together by running every process's `stub` block end-to-end.
+
+**Test infrastructure:**
+
+```
+tests/
+├── run_stub_tests.sh        # Test runner script (7 test scenarios)
+├── stub_test.config          # Nextflow config: disables Docker and reporting
+└── data/
+    ├── test.mzML             # Minimal mzML for stub input
+    ├── test.fasta            # Minimal FASTA for stub input
+    ├── test_peptides.tsv     # Minimal DIA-NN report for stub input
+    └── test.raw              # Empty RAW file for msconvert path
+```
+
+**Test scenarios** (in `tests/run_stub_tests.sh`):
+
+| # | Scenario | Processes exercised |
+|---|----------|-------------------|
+| 1 | Default: mzML + DIA-NN + Carafe (diann output) | `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
+| 2 | Encyclopedia output format | `DIANN_SEARCH_LIB_FREE`, `CARAFE`, `ENCYCLOPEDIA_TSV_TO_DLIB` |
+| 3 | Pre-computed peptide results (skip DIA-NN) | `CARAFE` |
+| 4 | Pre-computed peptides + encyclopedia output | `CARAFE`, `ENCYCLOPEDIA_TSV_TO_DLIB` |
+| 5 | RAW input (triggers msconvert) | `MSCONVERT`, `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
+| 6 | Separate DIA-NN FASTA file | `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
+| 7 | Custom Carafe CLI options | `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
+
+**Running locally:**
+```bash
+bash tests/run_stub_tests.sh          # run all stub tests (auto-cleans on completion)
+bash tests/run_stub_tests.sh clean    # remove leftover test artifacts manually
+```
+
+### CI/CD
+
+Stub tests run automatically on every push and pull request via GitHub Actions (`.github/workflows/stub-tests.yml`). The CI installs Nextflow, then runs the full stub test suite.
+
+### Requirements When Changing or Adding Processes
+
+When modifying existing processes or adding new ones:
+
+1. **Every process must have a `stub:` block.** The stub must create all files declared in the process `output:` block. Use only basic shell commands — no container-specific binaries.
+2. **Update stub tests if workflow paths change.** If a new process adds a workflow branch (e.g., a new conditional path), add a corresponding test scenario to `tests/run_stub_tests.sh`.
+3. **Run stub tests locally before pushing.** Execute `bash tests/run_stub_tests.sh` to verify all workflow paths still work.
+4. **CI must pass.** The GitHub Actions stub test workflow must pass on every push.
+
+---
+
 ## Known Notes
 
 - The `save_run_details` subworkflow is included but currently disabled (commented out in `main.nf`).
@@ -294,4 +359,3 @@ The workflow supports fetching input files from [PanoramaWeb](https://panoramawe
 - The header comment in `nextflow.config` references `nf-maccoss-trex`, which is a legacy project name.
 - The `panorama_auth_required_for_url()` function is duplicated in three files: `main.nf`, `workflows/get_input_files.nf`, and `workflows/get_mzmls.nf`.
 - The Carafe process hardcodes `-se "DIA-NN"` (search engine) and `-device cpu`. It renames Carafe's native output (`SkylineAI_spectral_library.tsv`) to `carafe_spectral_library.tsv`.
-- There is no automated CI/CD or test suite beyond Nextflow's built-in `stub` support in each process.

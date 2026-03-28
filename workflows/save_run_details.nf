@@ -25,6 +25,11 @@ process WRITE_VERSION_INFO {
             fi
         done
         '''
+
+    stub:
+        """
+        touch ${version_file_name}
+        """
 }
 
 workflow save_run_details {

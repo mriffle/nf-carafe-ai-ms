@@ -44,7 +44,7 @@ process DIANN_SEARCH_LIB_FREE {
         """
         touch lib.predicted.speclib report.tsv.speclib report.tsv stub.quant
         touch stub.stderr stub.stdout
-        diann | egrep -o '[0-9]+\\.[0-9]+\\.[0-9]+' | xargs printf "diann_version=%s\\n" > diann_version.txt
+        echo "diann_version=stub" > diann_version.txt
         """
 }
 

@@ -25,6 +25,8 @@ PANORAMA_URL = 'https://panoramaweb.org'
 //
 workflow {
 
+    log.info file("${projectDir}/conf/startup.txt").text
+
     if(!params.spectra_file) {
         error "`spectra_file` is a required parameter."
     }

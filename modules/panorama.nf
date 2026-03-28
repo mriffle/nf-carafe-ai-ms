@@ -87,6 +87,12 @@ process PANORAMA_GET_RAW_FILE_LIST {
 
     echo "Done!" # Needed for proper exit
     """
+
+    stub:
+    """
+    touch stub.download
+    touch stub.stderr stub.stdout
+    """
 }
 
 process PANORAMA_GET_FILE {
