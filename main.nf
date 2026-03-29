@@ -72,7 +72,7 @@ workflow {
             mzml_file_ch,
             params.diann_fasta_file ? diann_fasta_file : carafe_fasta_file
         )
-        peptide_report_file = diann_search.out.precursor_tsv
+        peptide_report_file = diann_search.out.precursor_report
         all_citations = all_citations.mix(diann_search.out.citations)
         all_versions = all_versions.mix(diann_search.out.versions)
     } else {

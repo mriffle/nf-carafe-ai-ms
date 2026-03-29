@@ -11,7 +11,7 @@ workflow diann_search {
     emit:
         quant_files
         speclib
-        precursor_tsv
+        precursor_report
         stdout
         stderr
         predicted_speclib
@@ -31,7 +31,7 @@ workflow diann_search {
 
         quant_files       = diann_results.quant_files
         speclib           = diann_results.speclib
-        precursor_tsv     = diann_results.precursor_tsv
+        precursor_report     = diann_results.precursor_report
         stdout            = diann_results.stdout
         stderr            = diann_results.stderr
         versions          = DIANN_SEARCH_LIB_FREE.out.version_info

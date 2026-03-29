@@ -30,6 +30,7 @@ Documentation Sections
    how_to_run
    workflow_parameters
    results
+   custom_diann
    set_up_aws
 
 Funding & Attribution

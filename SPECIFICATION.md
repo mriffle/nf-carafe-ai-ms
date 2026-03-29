@@ -115,6 +115,7 @@ nf-carafe-ai-ms/
 │   │   ├── how_to_run.rst         # Execution guide
 │   │   ├── workflow_parameters.rst# Parameter reference
 │   │   ├── results.rst            # Output file descriptions
+│   │   ├── custom_diann.rst       # Guide for using a custom DIA-NN version
 │   │   ├── set_up_aws.rst         # AWS setup reference
 │   │   └── _static/               # CSS and images
 │   ├── Makefile
@@ -202,7 +203,7 @@ Each module file in `modules/` defines one or more Nextflow processes wrapping a
 | `versions.nf` | `WRITE_VERSIONS` | ubuntu:22.04 | Collects version.json files from processes, deduplicates by program name, and writes `versions.txt` with program names, runtime versions, and container images |
 | `panorama.nf` | `PANORAMA_GET_FILE`, `PANORAMA_GET_RAW_FILE`, `PANORAMA_GET_RAW_FILE_LIST` | panorama-client:1.1.0 | Download files from PanoramaWeb via WebDAV, with caching. `PANORAMA_GET_RAW_FILE_LIST` is used by `get_mzmls` when `spectra_dir` is a PanoramaWeb URL. Emits `'panorama'` citation key. |
 | `msconvert.nf` | `MSCONVERT` | proteowizard:3.0.24172 | Convert RAW files to mzML (runs via wine). Citation key `'msconvert'` is emitted at the workflow level (not in the process) to avoid conflict with `storeDir`. |
-| `diann.nf` | `DIANN_SEARCH_LIB_FREE` | diann:1.8.1 | Library-free DIA-NN peptide identification. Emits `'diann'` citation key. |
+| `diann.nf` | `DIANN_SEARCH_LIB_FREE` | diann:1.8.1 | Library-free DIA-NN peptide identification. Emits precursor report as `{parquet,tsv}` (supports both DIA-NN 1.x TSV and 2.x Parquet output). Emits `'diann'` citation key. |
 | `carafe.nf` | `CARAFE` | carafe:2.0.0 | AI-enhanced spectral library generation (Java JAR). Uses `-ms "."` to process all mzML files and Bruker `.d` directories in the working directory. Emits `'carafe'` citation key. |
 | `encyclopedia.nf` | `ENCYCLOPEDIA_TSV_TO_DLIB` | encyclopedia:2.12.30-2 | Convert Carafe TSV to EncyclopeDIA DLIB format. Emits `'encyclopedia'` citation key. |
 
@@ -226,7 +227,7 @@ Each module file in `modules/` defines one or more Nextflow processes wrapping a
 |-------------|------|---------|
 | `get_input_files` | `workflows/get_input_files.nf` | Acquires FASTA files and peptide reports; handles PanoramaWeb downloads vs local files. Exports `param_to_list()` utility. Emits `citations` channel with `'panorama'` keys and `versions` channel with version.json files when PanoramaWeb is used. |
 | `get_mzmls` | `workflows/get_mzmls.nf` | Acquires spectra files (single via `spectra_file` or multiple via `spectra_dir` + glob), converts RAW to mzML if needed, and unzips `.d.zip` to `.d` if needed. For PanoramaWeb directories, uses `PANORAMA_GET_RAW_FILE_LIST` to list and filter files, then `PANORAMA_GET_FILE` to download each (`.d` directories rejected for Panorama; only `.d.zip` allowed). For local directories, globs files/directories (with `type: 'any'`) and validates extensions. Emits `citations` channel with `'panorama'` and/or `'msconvert'` keys and `versions` channel with version.json files as appropriate. |
-| `diann_search` | `workflows/diann_search.nf` | Runs DIA-NN in library-free mode; outputs precursor TSV and spectral library. Emits `citations` channel with `'diann'` key and `versions` channel with DIA-NN version.json. |
+| `diann_search` | `workflows/diann_search.nf` | Runs DIA-NN in library-free mode; outputs precursor report (TSV or Parquet) and spectral library. Emits `citations` channel with `'diann'` key and `versions` channel with DIA-NN version.json. |
 | `carafe` | `workflows/carafe.nf` | Collects all mzML files and/or Bruker `.d` directories and runs Carafe with `-ms "."` to process them all, along with FASTA and peptide results. Accepts modification parameters (`include_phosphorylation`, `include_oxidized_methionine`, `max_mod_option`). Emits `citations` channel with `'carafe'` key and `versions` channel with Carafe version.json. |
 
 ---
@@ -282,6 +283,8 @@ All tools run in Docker containers from the `quay.io/protio/` registry:
 
 Image versions are centralized in `container_images.config` and referenced throughout modules as `params.images.<key>`.
 
+**Custom DIA-NN versions:** DIA-NN 1.8.1 is the latest version that may be hosted in a public container registry due to licensing restrictions. Users may use newer versions by building a Docker image locally from a DIA-NN release and overriding `params.images.diann` in their `pipeline.config`. See `docs/source/custom_diann.rst` for detailed instructions.
+
 ---
 
 ## Outputs
@@ -300,7 +303,7 @@ results/nf-carafe-ai-ms/
 │   ├── carafe.stdout / carafe.stderr
 │   └── encyclopedia-convert-*.stdout/stderr  # If encyclopedia conversion ran
 ├── diann/                               # If DIA-NN search ran
-│   ├── report.tsv                       # Precursor-level results
+│   ├── report.tsv or report.parquet      # Precursor-level results (format depends on DIA-NN version)
 │   ├── report.tsv.speclib
 │   ├── lib.predicted.speclib
 │   ├── *.quant
@@ -321,13 +324,15 @@ Documentation is built with Sphinx using the ReadTheDocs theme and hosted at htt
 - **Source files**: `docs/source/*.rst` (reStructuredText)
 - **Sphinx config**: `docs/source/conf.py`
 - **Build config**: `.readthedocs.yaml` (Python 3.12, Ubuntu 22.04)
-- **Dependencies**: `docs/requirements.txt`
+- **Dependencies**: `docs/requirements.txt` (sphinx==7.1.2, sphinx_rtd_theme==2.0.0, readthedocs-sphinx-search==0.3.2)
 - **Extensions**: `sphinx_rtd_theme`, `sphinx.ext.autosectionlabel`, `readthedocs-sphinx-search`
 
-To build docs locally:
+To build docs locally (always use a venv, never install into the system Python):
 ```bash
-cd docs && make html
+cd docs && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt && make html
 ```
+
+The `docs/venv` directory and `docs/build` directory are in `.gitignore`.
 
 ---
 
