@@ -105,7 +105,11 @@ nf-carafe-ai-ms/
 ├── assets/
 │   └── email_template.html        # HTML email template
 ├── resources/
-│   └── pipeline.config            # Example user configuration file
+│   ├── pipeline.config            # Example user configuration file
+│   └── diann-docker/              # Files for building custom DIA-NN Docker images
+│       ├── build_diann_docker.sh  # Script to download and build a custom DIA-NN image
+│       ├── Dockerfile             # Dockerfile for DIA-NN (downloads release zip)
+│       └── entrypoint.sh          # Container entrypoint script
 ├── docs/                          # Sphinx documentation for ReadTheDocs
 │   ├── source/
 │   │   ├── conf.py                # Sphinx config (RTD theme, autosectionlabel)
@@ -283,7 +287,7 @@ All tools run in Docker containers from the `quay.io/protio/` registry:
 
 Image versions are centralized in `container_images.config` and referenced throughout modules as `params.images.<key>`.
 
-**Custom DIA-NN versions:** DIA-NN 1.8.1 is the latest version that may be hosted in a public container registry due to licensing restrictions. Users may use newer versions by building a Docker image locally from a DIA-NN release and overriding `params.images.diann` in their `pipeline.config`. See `docs/source/custom_diann.rst` for detailed instructions.
+**Custom DIA-NN versions:** DIA-NN 1.8.1 is the latest version that may be hosted in a public container registry due to licensing restrictions. Users may use newer DIA-NN 2.x versions by running the `resources/diann-docker/build_diann_docker.sh` script, which downloads the Dockerfile and entrypoint from this repository and builds a local Docker image. The resulting image is tagged `diann:<version>` and used by overriding `params.images.diann` in `pipeline.config`. See `docs/source/custom_diann.rst` for detailed instructions.
 
 ---
 

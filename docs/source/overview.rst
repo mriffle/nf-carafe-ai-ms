@@ -44,7 +44,7 @@ The workflow is made up of the following software components, each may be run mu
 
 *  **DIA-NN** (https://github.com/vdemichev/DiaNN)
 
-   DIA-NN (1.8.1) is used to generate data as input to Carafe. Newer versions may be used by building
+   DIA-NN (1.8.1) is used to generate data as input to Carafe. Newer versions (2.x) may be used by building
    a custom Docker image. See :doc:`custom_diann` for instructions.
 
 *  **Carafe** (https://github.com/Noble-Lab/Carafe)

@@ -3,10 +3,14 @@ Using a Custom DIA-NN Version
 ===================================
 This workflow includes DIA-NN version 1.8.1, which is the latest version that may be hosted
 in a public cloud container registry due to licensing restrictions. However, **newer versions of DIA-NN
-can be used** by building a Docker image yourself on the system where you will run the workflow.
+can be used** by building a Docker image on the system where you will run the workflow.
 
-This page walks you through the process step by step. If you have not yet installed Nextflow
-and Docker, please see :doc:`how_to_install` first.
+A build script is provided that automates this process. It downloads the necessary files from
+this project's GitHub repository and builds the Docker image for you.
+
+.. note::
+
+    These instructions only support **DIA-NN version 2.x** releases.
 
 .. important::
 
@@ -17,130 +21,71 @@ and Docker, please see :doc:`how_to_install` first.
 
 Prerequisites
 =============
-Before you begin, ensure the following are installed and working:
+Before you begin, ensure the following are installed and working on your system:
 
-- **Docker**: Required for building and running the DIA-NN container image. If Docker is not
-  installed, follow the Docker install guide at https://docs.docker.com/engine/install/. If you
-  are on Windows using WSL2, install Docker Desktop for Windows and enable the WSL2 integration
-  (see https://docs.docker.com/desktop/features/wsl/).
+- **Docker**: Required for building and running container images.
+- **Nextflow**: Required for running the workflow.
+- **wget**: Used by the build script to download files. Usually pre-installed on Linux.
 
-  You can verify Docker is working by running:
+If you have not yet installed these, see :doc:`how_to_install` for instructions.
 
-  .. code-block:: bash
-
-      docker run hello-world
-
-  If you see a "Hello from Docker!" message, Docker is working correctly.
-
-- **Nextflow**: Required for running the workflow. See :doc:`how_to_install` for installation
-  instructions.
-
-
-Step 1: Download the DIA-NN Release
-====================================
-Visit the DIA-NN releases page at https://github.com/vdemichev/DiaNN/releases and find the
-version you would like to use.
-
-Download the file whose name ends with ``-Academia.Linux.zip``. For example, for version 2.3.2
-the file would be named ``DIA-NN-2.3.2-Academia.Linux.zip``.
-
-You can download it using your web browser and then move it to your working directory, or you
-can download it directly from the command line. For example:
+You can verify Docker is working by running:
 
 .. code-block:: bash
 
-    cd
-    wget https://github.com/vdemichev/DiaNN/releases/download/2.3.2/DIA-NN-2.3.2-Academia.Linux.zip
+    docker run hello-world
+
+If you see a "Hello from Docker!" message, Docker is working correctly.
+
+
+Step 1: Download the Build Script
+==================================
+
+.. code-block:: bash
+
+    wget https://raw.githubusercontent.com/mriffle/nf-carafe-ai-ms/main/resources/diann-docker/build_diann_docker.sh
+
+
+Step 2: Run the Build Script
+=============================
+Run the script with the DIA-NN version number you want to use. You can find available
+versions at https://github.com/vdemichev/DiaNN/releases.
+
+For example, to build DIA-NN version 2.3.2:
+
+.. code-block:: bash
+
+    bash build_diann_docker.sh 2.3.2
+
+The script will download the necessary files, build the Docker image, and print instructions
+when it is finished. This may take a few minutes.
 
 .. note::
 
-    The URL above is an example for version 2.3.2. Replace the version number in the URL
-    with the version you want to use.
+    If you see an error that the Docker image already exists, you have already built this version.
+    If you want to rebuild it, run the command shown in the error message to remove the existing
+    image first.
 
-**Windows users:** If you downloaded the file using your web browser, you will need to copy
-it into your WSL2 environment. The easiest way is to use the command line. For example, if
-the file was downloaded to your Windows Downloads folder:
-
-.. code-block:: bash
-
-    cp /mnt/c/Users/YourUsername/Downloads/DIA-NN-2.3.2-Academia.Linux.zip ~/
-
-Replace ``YourUsername`` with your actual Windows username.
-
-
-Step 2: Unzip the Release
-=========================
-Unzip the downloaded file:
+To see all available options, run:
 
 .. code-block:: bash
 
-    cd
-    unzip DIA-NN-2.3.2-Academia.Linux.zip
-
-This will create a directory named something like ``diann-2.3.2``. You can verify by listing
-your directories:
-
-.. code-block:: bash
-
-    ls -d diann-*
-
-You should see the directory name printed.
-
-.. note::
-
-    If ``unzip`` is not installed, you can install it by running:
-
-    .. code-block:: bash
-
-        sudo apt update && sudo apt install -y unzip
+    bash build_diann_docker.sh -h
 
 
-Step 3: Build the Docker Image
+Step 3: Configure the Workflow
 ==============================
-Navigate into the unzipped directory and build the Docker image:
-
-.. code-block:: bash
-
-    cd ~/diann-2.3.2
-    docker build --no-cache -t diann_docker .
-
-.. important::
-
-    Do not forget the ``.`` at the end of the ``docker build`` command. It tells Docker to
-    look for the build instructions in the current directory.
-
-This may take a few minutes. When it is finished, you should see a message that includes
-``Successfully tagged diann_docker:latest``.
-
-You can verify the image was built by running:
-
-.. code-block:: bash
-
-    docker images diann_docker
-
-You should see one row listed for the ``diann_docker`` image.
-
-
-Step 4: Configure the Workflow
-==============================
-To use your custom DIA-NN image, you need to tell the workflow to use it instead of the
-default. Open your ``pipeline.config`` file (see :doc:`how_to_run` for how to find and
-edit this file) and add the following line inside the ``params`` section:
+After the script completes, it will display the exact line to add to your ``pipeline.config``
+file. Open your ``pipeline.config`` (see :doc:`how_to_run` for how to find and edit this file)
+and add the line to the ``params`` section. For example, if you built version 2.3.2:
 
 .. code-block:: groovy
 
     params {
+        images.diann = 'diann:2.3.2'
+
         // ... your other parameters ...
-
-        images.diann = 'diann_docker'
     }
-
-This overrides the default DIA-NN container image with the one you just built.
-
-.. note::
-
-    The value ``'diann_docker'`` must match the name you used in the ``docker build -t`` command
-    in Step 3. If you used a different name, use that name here instead.
 
 After saving your ``pipeline.config``, run the workflow as you normally would (see :doc:`how_to_run`).
 The workflow will automatically use your custom DIA-NN version for the DIA-NN search step.
