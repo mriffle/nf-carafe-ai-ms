@@ -115,7 +115,7 @@ workflow {
         ["Workflow git commit hash", (workflow.commitId ?: '').toString()],
         ["Run session ID", workflow.sessionId.toString()],
         ["Command line", workflow.commandLine.toString()]
-    ).collect()
+    ).collect(flat: false)
 
     WRITE_VERSIONS(workflow_metadata, all_version_data.collect())
 
