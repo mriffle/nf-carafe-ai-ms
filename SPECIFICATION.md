@@ -91,7 +91,7 @@ nf-carafe-ai-ms/
 │   ├── carafe.nf                  # CARAFE process
 │   ├── citations.nf               # WRITE_CITATIONS process
 │   ├── versions.nf                # WRITE_VERSIONS process
-│   ├── diann.nf                   # DIANN_SEARCH_LIB_FREE, BLIB_BUILD_LIBRARY
+│   ├── diann.nf                   # DIANN_SEARCH_LIB_FREE
 │   ├── encyclopedia.nf            # ENCYCLOPEDIA_TSV_TO_DLIB
 │   ├── msconvert.nf               # MSCONVERT (RAW to mzML)
 │   └── panorama.nf                # PANORAMA_GET_FILE, PANORAMA_GET_RAW_FILE, etc.
@@ -166,7 +166,7 @@ Note: The file header comment references `nf-maccoss-trex`, which is a legacy na
 Maps logical image names to versioned container URIs on Quay.io (`quay.io/protio/*`). All tools run in containers, so no local tool installation is required.
 
 ### `citations.config`
-Maps tool citation keys to their display name and reference string. Each entry has a `name` (display name) and `ref` (citation text). Keys defined: `panorama`, `carafe`, `msconvert`, `diann`, `bibliospec`, `encyclopedia`. Processes emit their citation key; the `WRITE_CITATIONS` process looks up entries here to produce `citations.txt`.
+Maps tool citation keys to their display name and reference string. Each entry has a `name` (display name) and `ref` (citation text). Keys defined: `panorama`, `carafe`, `msconvert`, `diann`, `encyclopedia`. Processes emit their citation key; the `WRITE_CITATIONS` process looks up entries here to produce `citations.txt`.
 
 ### `conf/base.config`
 Defines default process resources and resource labels used throughout modules.
@@ -202,7 +202,7 @@ Each module file in `modules/` defines one or more Nextflow processes wrapping a
 | `versions.nf` | `WRITE_VERSIONS` | ubuntu:22.04 | Collects version.json files from processes, deduplicates by program name, and writes `versions.txt` with program names, runtime versions, and container images |
 | `panorama.nf` | `PANORAMA_GET_FILE`, `PANORAMA_GET_RAW_FILE`, `PANORAMA_GET_RAW_FILE_LIST` | panorama-client:1.1.0 | Download files from PanoramaWeb via WebDAV, with caching. `PANORAMA_GET_RAW_FILE_LIST` is used by `get_mzmls` when `spectra_dir` is a PanoramaWeb URL. Emits `'panorama'` citation key. |
 | `msconvert.nf` | `MSCONVERT` | proteowizard:3.0.24172 | Convert RAW files to mzML (runs via wine). Citation key `'msconvert'` is emitted at the workflow level (not in the process) to avoid conflict with `storeDir`. |
-| `diann.nf` | `DIANN_SEARCH_LIB_FREE`, `BLIB_BUILD_LIBRARY` | diann:1.8.1 (note: `BLIB_BUILD_LIBRARY` references `params.images.bibliospec` which is not defined in `container_images.config`) | Library-free DIA-NN peptide identification. Emit `'diann'` and `'bibliospec'` citation keys respectively. |
+| `diann.nf` | `DIANN_SEARCH_LIB_FREE` | diann:1.8.1 | Library-free DIA-NN peptide identification. Emits `'diann'` citation key. |
 | `carafe.nf` | `CARAFE` | carafe:2.0.0 | AI-enhanced spectral library generation (Java JAR). Uses `-ms "."` to process all mzML files and Bruker `.d` directories in the working directory. Emits `'carafe'` citation key. |
 | `encyclopedia.nf` | `ENCYCLOPEDIA_TSV_TO_DLIB` | encyclopedia:2.12.30-2 | Convert Carafe TSV to EncyclopeDIA DLIB format. Emits `'encyclopedia'` citation key. |
 
@@ -446,7 +446,6 @@ Failure to update documentation alongside code changes results in specification 
 
 ## Known Notes
 
-- The `BLIB_BUILD_LIBRARY` process exists in `modules/diann.nf` but is not used in the current workflow. Its container image (`params.images.bibliospec`) is not defined in `container_images.config`.
 - The `PANORAMA_GET_RAW_FILE_LIST` process is used by `get_mzmls` when `spectra_dir` is a PanoramaWeb URL. It lists files, filters by glob, and outputs download URLs.
 - The `DESTROY_AWS_SECRETS` process in `modules/aws.nf` is commented out.
 - The header comment in `nextflow.config` references `nf-maccoss-trex`, which is a legacy project name.

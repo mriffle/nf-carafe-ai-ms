@@ -54,29 +54,3 @@ VEOF
         echo '{"program": "DIA-NN", "version": "stub", "container": "stub"}' > diann_version.json
         """
 }
-
-
-process BLIB_BUILD_LIBRARY {
-    publishDir "${params.result_dir}/diann", failOnError: true, mode: 'copy'
-    label 'process_medium'
-    container params.images.bibliospec
-
-    input:
-        path speclib
-        path precursor_tsv
-
-    output:
-        path('lib.blib'), emit: blib
-        val 'bibliospec', emit: citation
-
-    script:
-        """
-        BlibBuild "${speclib}" lib_redundant.blib
-        BlibFilter lib_redundant.blib lib.blib
-        """
-
-    stub:
-        """
-        touch lib.blib
-        """
-}
