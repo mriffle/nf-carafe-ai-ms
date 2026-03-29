@@ -207,7 +207,7 @@ Each module file in `modules/` defines one or more Nextflow processes wrapping a
 | `versions.nf` | `WRITE_VERSIONS` | ubuntu:22.04 | Collects version.json files from processes, deduplicates by program name, and writes `versions.txt` with program names, runtime versions, and container images |
 | `panorama.nf` | `PANORAMA_GET_FILE`, `PANORAMA_GET_RAW_FILE`, `PANORAMA_GET_RAW_FILE_LIST` | panorama-client:1.1.0 | Download files from PanoramaWeb via WebDAV, with caching. `PANORAMA_GET_RAW_FILE_LIST` is used by `get_mzmls` when `spectra_dir` is a PanoramaWeb URL. Emits `'panorama'` citation key. |
 | `msconvert.nf` | `MSCONVERT` | proteowizard:3.0.24172 | Convert RAW files to mzML (runs via wine). Citation key `'msconvert'` is emitted at the workflow level (not in the process) to avoid conflict with `storeDir`. |
-| `diann.nf` | `DIANN_SEARCH_LIB_FREE` | diann:1.8.1 | Library-free DIA-NN peptide identification. Emits precursor report as `{parquet,tsv}` (supports both DIA-NN 1.x TSV and 2.x Parquet output). Emits `'diann'` citation key. |
+| `diann.nf` | `DIANN_SEARCH_LIB_FREE` | diann:1.8.1 | Library-free DIA-NN peptide identification. Emits precursor report as `{parquet,tsv}` (supports both DIA-NN 1.x TSV and 2.x Parquet output), stdout/stderr logs, and version info. Emits `'diann'` citation key. |
 | `carafe.nf` | `CARAFE` | carafe:2.0.0 | AI-enhanced spectral library generation (Java JAR). Uses `-ms "."` to process all mzML files and Bruker `.d` directories in the working directory. Emits `'carafe'` citation key. |
 | `encyclopedia.nf` | `ENCYCLOPEDIA_TSV_TO_DLIB` | encyclopedia:2.12.30-2 | Convert Carafe TSV to EncyclopeDIA DLIB format. Emits `'encyclopedia'` citation key. |
 
@@ -231,7 +231,7 @@ Each module file in `modules/` defines one or more Nextflow processes wrapping a
 |-------------|------|---------|
 | `get_input_files` | `workflows/get_input_files.nf` | Acquires FASTA files and peptide reports; handles PanoramaWeb downloads vs local files. Exports `param_to_list()` utility. Emits `citations` channel with `'panorama'` keys and `versions` channel with version.json files when PanoramaWeb is used. |
 | `get_mzmls` | `workflows/get_mzmls.nf` | Acquires spectra files (single via `spectra_file` or multiple via `spectra_dir` + glob), converts RAW to mzML if needed, and unzips `.d.zip` to `.d` if needed. For PanoramaWeb directories, uses `PANORAMA_GET_RAW_FILE_LIST` to list and filter files, then `PANORAMA_GET_FILE` to download each (`.d` directories rejected for Panorama; only `.d.zip` allowed). For local directories, globs files/directories (with `type: 'any'`) and validates extensions. Emits `citations` channel with `'panorama'` and/or `'msconvert'` keys and `versions` channel with version.json files as appropriate. |
-| `diann_search` | `workflows/diann_search.nf` | Runs DIA-NN in library-free mode; outputs precursor report (TSV or Parquet) and spectral library. Emits `citations` channel with `'diann'` key and `versions` channel with DIA-NN version.json. |
+| `diann_search` | `workflows/diann_search.nf` | Runs DIA-NN in library-free mode; outputs precursor report (TSV or Parquet), stdout, and stderr. Emits `citations` channel with `'diann'` key and `versions` channel with DIA-NN version.json. |
 | `carafe` | `workflows/carafe.nf` | Collects all mzML files and/or Bruker `.d` directories and runs Carafe with `-ms "."` to process them all, along with FASTA and peptide results. Accepts modification parameters (`include_phosphorylation`, `include_oxidized_methionine`, `max_mod_option`). Emits `citations` channel with `'carafe'` key and `versions` channel with Carafe version.json. |
 
 ---
@@ -308,9 +308,6 @@ results/nf-carafe-ai-ms/
 │   └── encyclopedia-convert-*.stdout/stderr  # If encyclopedia conversion ran
 ├── diann/                               # If DIA-NN search ran
 │   ├── report.tsv or report.parquet      # Precursor-level results (format depends on DIA-NN version)
-│   ├── report.tsv.speclib
-│   ├── lib.predicted.speclib
-│   ├── *.quant
 │   ├── diann_version.json
 │   └── diann.stdout / diann.stderr
 └── panorama/                            # If PanoramaWeb files were downloaded

@@ -11,10 +11,7 @@ process DIANN_SEARCH_LIB_FREE {
     output:
         path("*.stderr"), emit: stderr
         path("*.stdout"), emit: stdout
-        path("report.tsv.speclib"), emit: speclib
         path("${output_report_name}.{parquet,tsv}"), emit: precursor_report
-        path("*.quant"), emit: quant_files
-        path("lib.predicted.speclib"), emit: predicted_speclib
         path("diann_version.json"), emit: version_info
         val 'diann', emit: citation
 
@@ -72,7 +69,7 @@ VEOF
         output_report_name = 'report'
 
         """
-        touch lib.predicted.speclib report.tsv.speclib report.tsv stub.quant
+        touch report.tsv
         touch stub.stderr stub.stdout
         echo '{"program": "DIA-NN", "version": "stub", "container": "stub"}' > diann_version.json
         """

@@ -9,12 +9,9 @@ workflow diann_search {
         fasta
 
     emit:
-        quant_files
-        speclib
         precursor_report
         stdout
         stderr
-        predicted_speclib
         versions
         citations
 
@@ -27,11 +24,7 @@ workflow diann_search {
             params.diann_params
         )
 
-        predicted_speclib = diann_results.predicted_speclib
-
-        quant_files       = diann_results.quant_files
-        speclib           = diann_results.speclib
-        precursor_report     = diann_results.precursor_report
+        precursor_report  = diann_results.precursor_report
         stdout            = diann_results.stdout
         stderr            = diann_results.stderr
         versions          = DIANN_SEARCH_LIB_FREE.out.version_info
