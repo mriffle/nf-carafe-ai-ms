@@ -5,6 +5,8 @@ process MSCONVERT {
     label 'error_retry'
     container params.images.proteowizard
 
+    tag "${raw_file.baseName}"
+
     input:
         path raw_file
         val do_demultiplex
