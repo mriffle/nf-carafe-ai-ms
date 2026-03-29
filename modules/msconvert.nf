@@ -29,10 +29,11 @@ process MSCONVERT {
         --mzML \
         --ignoreUnknownInstrumentError \
         --filter "peakPicking true 1-" \
-        --64 ${simasspectra} ${demultiplex_param} \
-        2> >(tee msconvert.stderr >&2)
+        --64 ${simasspectra} ${demultiplex_param}
 
-    MSCONVERT_VERSION=\$(head -5 msconvert.stderr | egrep -o '[0-9]+\\.[0-9]+(\\.[0-9]+)?' | head -1 || true)
+    # Extract version from msconvert help output
+    wine msconvert --help > msconvert_help.txt 2>&1 || true
+    MSCONVERT_VERSION=\$(tr -d '\\r' < msconvert_help.txt | grep -E 'ProteoWizard release:|Build date:' | sed 's/^[[:space:]]*//' | awk '{printf sep \$0; sep="; "}' || true)
     MSCONVERT_VERSION=\${MSCONVERT_VERSION:-unknown}
     cat <<VEOF > ${raw_file.baseName}_msconvert_version.json
 {"program": "msconvert", "version": "\$MSCONVERT_VERSION", "container": "${container_image}"}
