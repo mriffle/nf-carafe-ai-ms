@@ -9,6 +9,9 @@ workflow carafe {
         fasta_file
         peptide_results_file
         carafe_params
+        include_phosphorylation
+        include_oxidized_methionine
+        max_mod_option
         output_format
 
     emit:
@@ -25,6 +28,9 @@ workflow carafe {
             fasta_file,
             peptide_results_file,
             carafe_params,
+            include_phosphorylation,
+            include_oxidized_methionine,
+            max_mod_option,
             output_format
         )
 

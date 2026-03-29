@@ -83,7 +83,10 @@ workflow {
         mzml_file_ch,
         carafe_fasta_file,
         peptide_report_file,
-        params.carafe_cli_options ? params.carafe_cli_options : '',
+        params.cli_options,
+        params.include_phosphorylation,
+        params.include_oxidized_methionine,
+        params.max_mod_option,
         params.output_format
     )
 

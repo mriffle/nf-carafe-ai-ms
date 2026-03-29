@@ -209,7 +209,7 @@ Each module file in `modules/` defines one or more Nextflow processes wrapping a
 ### Notable Implementation Details
 
 - **Bruker module**: Unzips `.d.zip` files using the `ubuntu` container. Output is the `.d` directory (derived from `zip_file.baseName`).
-- **Carafe module**: Detects Apptainer/Singularity vs Docker and conditionally activates a conda environment. Allocates Java heap as `(task.memory - 1 GB)`. Accepts both mzML files and Bruker `.d` directories as input (staged into the work directory and discovered via `-ms "."`).
+- **Carafe module**: Allocates Java heap as `(task.memory - 1 GB)`. Accepts both mzML files and Bruker `.d` directories as input (staged into the work directory and discovered via `-ms "."`). Supports optional variable modifications (phosphorylation and/or oxidized methionine) via `-varMod`, `-mode`, and `-maxVar` flags, constructed from `include_phosphorylation`, `include_oxidized_methionine`, and `max_mod_option` parameters. Phosphorylation uses `-varMod 7,8,9 -mode phosphorylation`, oxidized methionine uses `-varMod 2 -mode general`, both uses `-varMod 2,7,8,9 -mode phosphorylation`, and neither uses `-mode general` (no `-varMod` or `-maxVar`).
 - **Panorama module**: Uses `PanoramaClient.jar` for WebDAV access. On AWS, retrieves API keys from Secrets Manager. `PANORAMA_GET_RAW_FILE` uses `storeDir` for file caching; `PANORAMA_GET_FILE` does not cache (used for FASTA, report, and spectra file downloads). `PANORAMA_GET_RAW_FILE_LIST` lists files on a PanoramaWeb directory, filters by a glob-derived regex, and outputs `download_files.txt` with full download URLs. The `panorama_auth_required_for_url()` helper is duplicated across `main.nf`, `get_input_files.nf`, and `get_mzmls.nf`.
 - **msconvert module**: Caches output mzML files using `storeDir` keyed by `workflow.commitId` and demux/simasspectra settings.
 - **Citations module**: `WRITE_CITATIONS` receives a collected list of unique citation keys, looks up each key in `params.citations` (from `citations.config`), and writes a formatted `citations.txt` file. Runs in the `ubuntu` container.
@@ -227,7 +227,7 @@ Each module file in `modules/` defines one or more Nextflow processes wrapping a
 | `get_input_files` | `workflows/get_input_files.nf` | Acquires FASTA files and peptide reports; handles PanoramaWeb downloads vs local files. Exports `param_to_list()` utility. Emits `citations` channel with `'panorama'` keys and `versions` channel with version.json files when PanoramaWeb is used. |
 | `get_mzmls` | `workflows/get_mzmls.nf` | Acquires spectra files (single via `spectra_file` or multiple via `spectra_dir` + glob), converts RAW to mzML if needed, and unzips `.d.zip` to `.d` if needed. For PanoramaWeb directories, uses `PANORAMA_GET_RAW_FILE_LIST` to list and filter files, then `PANORAMA_GET_FILE` to download each (`.d` directories rejected for Panorama; only `.d.zip` allowed). For local directories, globs files/directories (with `type: 'any'`) and validates extensions. Emits `citations` channel with `'panorama'` and/or `'msconvert'` keys and `versions` channel with version.json files as appropriate. |
 | `diann_search` | `workflows/diann_search.nf` | Runs DIA-NN in library-free mode; outputs precursor TSV and spectral library. Emits `citations` channel with `'diann'` key and `versions` channel with DIA-NN version.json. |
-| `carafe` | `workflows/carafe.nf` | Collects all mzML files and/or Bruker `.d` directories and runs Carafe with `-ms "."` to process them all, along with FASTA and peptide results. Emits `citations` channel with `'carafe'` key and `versions` channel with Carafe version.json. |
+| `carafe` | `workflows/carafe.nf` | Collects all mzML files and/or Bruker `.d` directories and runs Carafe with `-ms "."` to process them all, along with FASTA and peptide results. Accepts modification parameters (`include_phosphorylation`, `include_oxidized_methionine`, `max_mod_option`). Emits `citations` channel with `'carafe'` key and `versions` channel with Carafe version.json. |
 
 ---
 
@@ -250,7 +250,10 @@ Each module file in `modules/` defines one or more Nextflow processes wrapping a
 | `peptide_results_file` | `null` | Pre-computed DIA-NN results; skips DIA-NN search if provided |
 | `diann_fasta_file` | `null` | Separate FASTA for DIA-NN; uses `carafe_fasta_file` if null |
 | `diann_params` | `'--unimod4 --qvalue 0.01 --cut \'K*,R*,!*P\' --reanalyse --smart-profiling'` | DIA-NN CLI options |
-| `carafe_cli_options` | `''` | Additional Carafe CLI options (do not set `-ms`, `-db`, `-i`, `-se`, `-lf_type`, or `-device` as the workflow sets these) |
+| `cli_options` | `'-fdr 0.01 -ptm_site_prob 0.75 ...'` | Carafe CLI options with sensible defaults for most general DIA searches. Do not set `-mode`, `-varMod`, `-maxVar`, `-ms`, `-db`, `-i`, `-se`, `-lf_type`, or `-device` as the workflow manages these. |
+| `include_phosphorylation` | `false` | Set to `true` to include phosphorylation (STY) as a variable modification in Carafe |
+| `include_oxidized_methionine` | `false` | Set to `true` to include oxidized methionine (M) as a variable modification in Carafe |
+| `max_mod_option` | `'-maxVar 1'` | Maximum variable modifications per peptide (Carafe CLI arg). Ignored if no variable modifications are enabled. |
 | `msconvert.do_demultiplex` | `true` | Enable demultiplexing in msconvert |
 | `msconvert.do_simasspectra` | `true` | Enable simAsSpectra in msconvert |
 | `email` | `null` | Email address for completion notifications |
@@ -361,7 +364,7 @@ Stub tests verify that all workflow paths are correctly wired together by runnin
 
 ```
 tests/
-├── run_stub_tests.sh        # Test runner script (18 test scenarios)
+├── run_stub_tests.sh        # Test runner script (19 test scenarios)
 ├── stub_test.config          # Nextflow config: disables Docker and reporting
 └── data/
     ├── test.mzML             # Minimal mzML for stub input
@@ -395,17 +398,18 @@ tests/
 | 5 | RAW input (triggers msconvert) | `MSCONVERT`, `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
 | 6 | Separate DIA-NN FASTA file | `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
 | 7 | Custom Carafe CLI options | `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
-| 8 | spectra_dir with multiple mzML files | `DIANN_SEARCH_LIB_FREE`, `CARAFE` (multiple inputs) |
-| 9 | spectra_dir with multiple RAW files | `MSCONVERT`, `DIANN_SEARCH_LIB_FREE`, `CARAFE` (multiple inputs) |
-| 10 | spectra_dir + pre-computed peptides | `CARAFE` (multiple inputs, DIA-NN skipped) |
-| 11 | Bruker .d directory as spectra_file | `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
-| 12 | Bruker .d.zip file as spectra_file | `UNZIP_BRUKER_DATA`, `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
-| 13 | spectra_dir with multiple Bruker .d directories | `DIANN_SEARCH_LIB_FREE`, `CARAFE` (multiple inputs) |
-| 14 | spectra_dir with multiple Bruker .d.zip files | `UNZIP_BRUKER_DATA`, `DIANN_SEARCH_LIB_FREE`, `CARAFE` (multiple inputs) |
-| 15 | Panorama spectra_dir with RAW glob | `PANORAMA_GET_RAW_FILE_LIST`, `PANORAMA_GET_FILE` (x3), `MSCONVERT` (x3), `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
-| 16 | Panorama spectra_dir with mzML glob | `PANORAMA_GET_RAW_FILE_LIST`, `PANORAMA_GET_FILE` (x3), `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
-| 17 | Panorama spectra_dir with specific glob | `PANORAMA_GET_RAW_FILE_LIST`, `PANORAMA_GET_FILE` (x1), `MSCONVERT`, `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
-| 18 | Panorama spectra_dir with Bruker .d.zip glob | `PANORAMA_GET_RAW_FILE_LIST`, `PANORAMA_GET_FILE` (x3), `UNZIP_BRUKER_DATA` (x3), `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
+| 8 | Phosphorylation + oxidized methionine modifications | `DIANN_SEARCH_LIB_FREE`, `CARAFE` (with modification params) |
+| 9 | spectra_dir with multiple mzML files | `DIANN_SEARCH_LIB_FREE`, `CARAFE` (multiple inputs) |
+| 10 | spectra_dir with multiple RAW files | `MSCONVERT`, `DIANN_SEARCH_LIB_FREE`, `CARAFE` (multiple inputs) |
+| 11 | spectra_dir + pre-computed peptides | `CARAFE` (multiple inputs, DIA-NN skipped) |
+| 12 | Bruker .d directory as spectra_file | `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
+| 13 | Bruker .d.zip file as spectra_file | `UNZIP_BRUKER_DATA`, `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
+| 14 | spectra_dir with multiple Bruker .d directories | `DIANN_SEARCH_LIB_FREE`, `CARAFE` (multiple inputs) |
+| 15 | spectra_dir with multiple Bruker .d.zip files | `UNZIP_BRUKER_DATA`, `DIANN_SEARCH_LIB_FREE`, `CARAFE` (multiple inputs) |
+| 16 | Panorama spectra_dir with RAW glob | `PANORAMA_GET_RAW_FILE_LIST`, `PANORAMA_GET_FILE` (x3), `MSCONVERT` (x3), `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
+| 17 | Panorama spectra_dir with mzML glob | `PANORAMA_GET_RAW_FILE_LIST`, `PANORAMA_GET_FILE` (x3), `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
+| 18 | Panorama spectra_dir with specific glob | `PANORAMA_GET_RAW_FILE_LIST`, `PANORAMA_GET_FILE` (x1), `MSCONVERT`, `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
+| 19 | Panorama spectra_dir with Bruker .d.zip glob | `PANORAMA_GET_RAW_FILE_LIST`, `PANORAMA_GET_FILE` (x3), `UNZIP_BRUKER_DATA` (x3), `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
 
 **Running locally:**
 ```bash
@@ -450,4 +454,4 @@ Failure to update documentation alongside code changes results in specification 
 - The `DESTROY_AWS_SECRETS` process in `modules/aws.nf` is commented out.
 - The header comment in `nextflow.config` references `nf-maccoss-trex`, which is a legacy project name.
 - The `panorama_auth_required_for_url()` function is duplicated in three files: `main.nf`, `workflows/get_input_files.nf`, and `workflows/get_mzmls.nf`.
-- The Carafe process hardcodes `-se "DIA-NN"` (search engine), `-device cpu`, and `-ms "."` (processes all mzML files and Bruker `.d` directories in the working directory). It renames Carafe's native output (`SkylineAI_spectral_library.tsv`) to `carafe_spectral_library.tsv`.
+- The Carafe process hardcodes `-se "DIA-NN"` (search engine), `-device cpu`, and `-ms "."` (processes all mzML files and Bruker `.d` directories in the working directory). It conditionally renames Carafe's native output (`SkylineAI_spectral_library.tsv`) to `carafe_spectral_library.tsv` if present. Variable modification flags (`-varMod`, `-mode`, `-maxVar`) are constructed dynamically from the `include_phosphorylation`, `include_oxidized_methionine`, and `max_mod_option` parameters. When neither modification is enabled, `-mode general` is used with no `-varMod` or `-maxVar`.

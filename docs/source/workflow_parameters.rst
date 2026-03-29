@@ -79,9 +79,18 @@ The ``params`` Section
    * -
      - ``output_format``
      - The final output format of the generated spectral library. Must be one of ``'diann'`` or ``'encyclopedia'``. Default: ``'diann'``
-   * - 
-     - ``carafe_cli_options``
-     - Command line options to pass to Carafe. Note: Do not set the ``-ms``, ``-db``, ``-i``, ``-se``, ``-lf_type``, or ``-device`` parameters, these are handled by the workflow. The default is to not pass any command line option and use Carafe's defaults, see https://github.com/Noble-Lab/Carafe for more details.
+   * -
+     - ``cli_options``
+     - Command line options to pass to Carafe. The default includes sensible settings for most general DIA searches. Do not set the ``-mode``, ``-varMod``, ``-maxVar``, ``-ms``, ``-db``, ``-i``, ``-se``, ``-lf_type``, or ``-device`` parameters, these are handled by the workflow. See https://github.com/Noble-Lab/Carafe for more details.
+   * -
+     - ``include_phosphorylation``
+     - Set to ``true`` to include phosphorylation (STY) as a variable modification in the Carafe spectral library. Default: ``false``.
+   * -
+     - ``include_oxidized_methionine``
+     - Set to ``true`` to include oxidized methionine (M) as a variable modification in the Carafe spectral library. Default: ``false``.
+   * -
+     - ``max_mod_option``
+     - The maximum number of variable modifications allowed per peptide, specified as a Carafe CLI argument. Ignored if no variable modifications are enabled. Default: ``'-maxVar 1'``.
    * - 
      - ``diann_fasta_file``
      - The FASTA file used by DIA-NN. If not set ``carafe_fasta_file`` will be used. Default: not set.
