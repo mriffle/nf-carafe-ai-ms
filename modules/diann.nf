@@ -49,7 +49,17 @@ process DIANN_SEARCH_LIB_FREE {
             --predictor \
             ${diann_params} \
             > >(tee "diann.stdout") 2> >(tee "diann.stderr" >&2)
-        mv -v lib.tsv.speclib report.tsv.speclib
+
+        # DiaNN does weird things with output file names depending on the version
+        # Instead of specifying them as options to DiaNN we will rename the default output files manually
+        if [[ -f report.tsv ]] ; then
+            mv -nv report.tsv ${output_report_name}.tsv
+        elif [[ -f report.parquet ]] ; then
+            mv -nv report.parquet ${output_report_name}.parquet
+        else
+            echo "Missing DiaNN precursor report and/or speclib!" >&2
+            exit 1
+        fi
 
         DIANN_VERSION=\$(head -n 1 diann.stdout | egrep -o '[0-9]+\\.[0-9]+\\.[0-9]+' || true)
         DIANN_VERSION=\${DIANN_VERSION:-unknown}
