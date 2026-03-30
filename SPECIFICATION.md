@@ -10,7 +10,7 @@ The workflow automates the full pipeline: acquiring input files (locally, from S
 **License:** Apache 2.0
 **Documentation:** https://nf-carafe-ai-ms.readthedocs.io/
 **Source:** https://github.com/mriffle/nf-carafe-ai-ms
-**Requires:** Nextflow >= 21.10.3
+**Requires:** Nextflow >= 23.04.0
 
 ---
 
@@ -20,12 +20,12 @@ The workflow executes these steps in order:
 
 ```
 1. Parameter Validation
-   - Either spectra_file or spectra_dir is required (mutually exclusive)
+   - Schema-based validation via nf-schema plugin (nextflow_schema.json)
+   - Validates parameter types, required fields (carafe_fasta_file), and enum values (output_format)
+   - Custom validation: either spectra_file or spectra_dir is required (mutually exclusive)
    - spectra_file may be a .raw, .mzML, .d directory, or .d.zip file
    - spectra_dir files (after glob matching) must all be the same type: .raw, .mzML, .d, or .d.zip
    - Bruker .d directories cannot be downloaded from PanoramaWeb; use .d.zip files instead
-   - carafe_fasta_file (required)
-   - output_format must be 'diann' or 'encyclopedia'
 
 2. AWS Secrets Setup (conditional)
    - Only when profile='aws' AND PanoramaWeb URLs are used
@@ -81,6 +81,7 @@ The workflow executes these steps in order:
 nf-carafe-ai-ms/
 ├── main.nf                        # Main workflow entry point
 ├── nextflow.config                # Primary configuration (params, profiles, reporting)
+├── nextflow_schema.json           # nf-schema parameter definitions and validation rules
 ├── container_images.config        # Docker/container image version mappings
 ├── citations.config               # Tool citation definitions (name + reference per tool)
 ├── conf/
@@ -161,10 +162,13 @@ nf-carafe-ai-ms/
 ## Key Files in Detail
 
 ### `main.nf`
-The workflow entry point. Validates parameters (requiring either `spectra_file` or `spectra_dir`, but not both), conditionally sets up AWS secrets for PanoramaWeb access, orchestrates all subworkflows, collects citations and version information, and handles email notifications on completion. Contains helper functions `is_panorama_used()` and `panorama_auth_required_for_url()` for determining when AWS Secrets Manager credentials are needed. Also defines a `dummy` workflow for testing.
+The workflow entry point. Calls `validateParameters()` (from the nf-schema plugin) to validate parameters against `nextflow_schema.json`, then performs custom validation (requiring either `spectra_file` or `spectra_dir`, but not both). Conditionally sets up AWS secrets for PanoramaWeb access, orchestrates all subworkflows, collects citations and version information, and handles email notifications on completion. Contains helper functions `is_panorama_used()` and `panorama_auth_required_for_url()` for determining when AWS Secrets Manager credentials are needed. Also defines a `dummy` workflow for testing.
+
+### `nextflow_schema.json`
+JSON Schema file (draft-2020-12) used by the nf-schema plugin for parameter validation and `--help` output. Defines parameter types, defaults, descriptions, required fields, and enum constraints. Parameters are organized into groups: Input/Output Options, DIA-NN Options, Carafe Options, msconvert Options, Notification Options, and Infrastructure Options (hidden). The `carafe_fasta_file` parameter is required; `output_format` is constrained to `'diann'` or `'encyclopedia'`. The `spectra_file`/`spectra_dir` mutual exclusivity is not expressible in JSON Schema and is enforced in `main.nf`.
 
 ### `nextflow.config`
-Defines all workflow parameters, execution profiles (standard/aws/slurm), AWS Batch settings, Nextflow reporting (timeline, report, trace), and the `check_max()` utility function for capping resource requests. Includes `conf/base.config` and `container_images.config`.
+Defines all workflow parameters, execution profiles (standard/aws/slurm), AWS Batch settings, Nextflow reporting (timeline, report, trace), and the `check_max()` utility function for capping resource requests. Declares the `nf-schema@2.3.0` plugin and configures validation behavior (lenient mode enabled, `images` and `citations` params ignored). Includes `conf/base.config` and `container_images.config`.
 
 Note: The file header comment references `nf-maccoss-trex`, which is a legacy name; the actual project is `nf-carafe-ai-ms`.
 
@@ -459,6 +463,7 @@ Failure to update documentation alongside code changes results in specification 
 
 ## Known Notes
 
+- **Parameter validation** uses the nf-schema plugin (`nf-schema@2.3.0`) with `nextflow_schema.json`. Schema handles type checking, required fields (`carafe_fasta_file`), and enum constraints (`output_format`). The `spectra_file`/`spectra_dir` mutual exclusivity is enforced via custom logic in `main.nf` because JSON Schema cannot express "exactly one of two optional parameters." The `images` and `citations` map parameters are excluded from schema validation via `defaultIgnoreParams`.
 - The `PANORAMA_GET_RAW_FILE_LIST` process is used by `get_mzmls` when `spectra_dir` is a PanoramaWeb URL. It lists files, filters by glob, and outputs download URLs.
 - The `DESTROY_AWS_SECRETS` process in `modules/aws.nf` is commented out.
 - The header comment in `nextflow.config` references `nf-maccoss-trex`, which is a legacy project name.

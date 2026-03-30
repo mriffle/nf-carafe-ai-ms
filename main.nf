@@ -18,6 +18,9 @@ include { WRITE_VERSIONS } from "./modules/versions"
 // useful functions and variables
 include { param_to_list } from "./workflows/get_input_files"
 
+// nf-schema parameter validation
+include { validateParameters } from 'plugin/nf-schema'
+
 // String to test for Panoramaness
 PANORAMA_URL = 'https://panoramaweb.org'
 
@@ -28,20 +31,16 @@ workflow {
 
     log.info file("${projectDir}/conf/startup.txt").text
 
+    // Validate parameters against the schema (nextflow_schema.json)
+    validateParameters()
+
+    // Custom validation: spectra_file and spectra_dir are mutually exclusive
     if(!params.spectra_file && !params.spectra_dir) {
         error "Either `spectra_file` or `spectra_dir` must be specified."
     }
 
     if(params.spectra_file && params.spectra_dir) {
         error "`spectra_file` and `spectra_dir` cannot both be specified."
-    }
-
-    if(!params.carafe_fasta_file) {
-        error "`carafe_fasta_file` is a required parameter."
-    }
-
-    if(params.output_format != 'diann' && params.output_format != 'encyclopedia') {
-        error "`output_format` must be one of 'diann' or 'encyclopedia'"
     }
 
     // if accessing panoramaweb and running on aws, set up an aws secret

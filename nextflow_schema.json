@@ -1,0 +1,243 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://raw.githubusercontent.com/mriffle/nf-carafe-ai-ms/main/nextflow_schema.json",
+    "title": "nf-carafe-ai-ms pipeline parameters",
+    "description": "Workflow for Carafe spectral library generation using the awesome power of AI",
+    "type": "object",
+    "$defs": {
+        "input_output_options": {
+            "title": "Input/Output Options",
+            "type": "object",
+            "description": "Options for specifying input data and output configuration.",
+            "required": ["carafe_fasta_file"],
+            "properties": {
+                "spectra_file": {
+                    "type": "string",
+                    "description": "Path to a single spectra file (.raw, .mzML, .d directory, or .d.zip). May be a local path, S3 URI, or PanoramaWeb URL. Mutually exclusive with spectra_dir."
+                },
+                "spectra_dir": {
+                    "type": "string",
+                    "description": "Path to a directory containing spectra files (.raw, .mzML, .d, or .d.zip). May be a local path, S3 URI, or PanoramaWeb WebDAV URL. Mutually exclusive with spectra_file."
+                },
+                "spectra_dir_glob": {
+                    "type": "string",
+                    "default": "*.raw",
+                    "description": "Glob pattern to select files from spectra_dir. All matched files must have the same extension."
+                },
+                "carafe_fasta_file": {
+                    "type": "string",
+                    "description": "Protein FASTA file for Carafe spectral library generation."
+                },
+                "output_format": {
+                    "type": "string",
+                    "default": "diann",
+                    "enum": ["diann", "encyclopedia"],
+                    "description": "Format of the output spectral library: 'diann' (TSV) or 'encyclopedia' (DLIB)."
+                },
+                "result_dir": {
+                    "type": "string",
+                    "default": "results/nf-carafe-ai-ms",
+                    "description": "Directory where results will be saved."
+                },
+                "report_dir": {
+                    "type": "string",
+                    "default": "reports/nf-carafe-ai-ms",
+                    "description": "Directory where Nextflow reports will be saved."
+                }
+            }
+        },
+        "diann_options": {
+            "title": "DIA-NN Options",
+            "type": "object",
+            "description": "Options for DIA-NN peptide identification.",
+            "properties": {
+                "peptide_results_file": {
+                    "type": "string",
+                    "description": "Path to pre-computed peptide identification results (DIA-NN report.tsv or report.parquet). If provided, DIA-NN search will be skipped."
+                },
+                "diann_fasta_file": {
+                    "type": "string",
+                    "description": "FASTA file for DIA-NN. If not provided, carafe_fasta_file will be used."
+                },
+                "diann_params": {
+                    "type": "string",
+                    "default": "--unimod4 --qvalue 0.01 --cut 'K*,R*,!*P' --reanalyse --smart-profiling",
+                    "description": "Command line parameters passed to DIA-NN."
+                }
+            }
+        },
+        "carafe_options": {
+            "title": "Carafe Options",
+            "type": "object",
+            "description": "Options for Carafe spectral library generation.",
+            "properties": {
+                "cli_options": {
+                    "type": "string",
+                    "default": "-fdr 0.01 -ptm_site_prob 0.75 -ptm_site_qvalue 0.01 -itol 20 -itolu ppm -rf -rf_rt_win auto -cor 0.8 -min_mz 200 -n_ion_min 2 -c_ion_min 2 -enzyme 2 -miss_c 1 -fixMod 1 -clip_n_m -minLength 7 -maxLength 35 -min_pep_mz 300 -max_pep_mz 1800 -min_pep_charge 2 -max_pep_charge 4 -lf_frag_mz_min 200 -lf_frag_mz_max 1800 -lf_top_n_frag 20 -lf_min_n_frag 2 -lf_frag_n_min 2 -tf all -nm -nf 4 -min_n 4 -valid -na 0 -ez -fast",
+                    "description": "General command line options for Carafe. Do not set -mode, -varMod, -maxVar, -ms, -db, -i, -se, -lf_type, or -device as these are managed by the workflow."
+                },
+                "include_phosphorylation": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Include phosphorylation (STY) as a variable modification in the spectral library."
+                },
+                "include_oxidized_methionine": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Include oxidized methionine (M) as a variable modification in the spectral library."
+                },
+                "max_mod_option": {
+                    "type": "string",
+                    "default": "-maxVar 1",
+                    "description": "Maximum variable modifications per peptide (Carafe CLI argument). Ignored if no variable modifications are enabled."
+                }
+            }
+        },
+        "msconvert_options": {
+            "title": "msconvert Options",
+            "type": "object",
+            "description": "Options for msconvert RAW file conversion.",
+            "properties": {
+                "msconvert": {
+                    "type": "object",
+                    "description": "msconvert configuration.",
+                    "default": {},
+                    "properties": {
+                        "do_demultiplex": {
+                            "type": "boolean",
+                            "default": true,
+                            "description": "Whether to demultiplex with msconvert when converting RAW files."
+                        },
+                        "do_simasspectra": {
+                            "type": "boolean",
+                            "default": true,
+                            "description": "Whether to use simAsSpectra with msconvert when converting RAW files."
+                        }
+                    }
+                }
+            }
+        },
+        "notification_options": {
+            "title": "Notification Options",
+            "type": "object",
+            "description": "Options for email notifications on workflow completion.",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "description": "Email address for workflow completion notifications."
+                }
+            }
+        },
+        "infrastructure_options": {
+            "title": "Infrastructure Options",
+            "type": "object",
+            "description": "Infrastructure and resource configuration. Typically set by execution profiles, not by users directly.",
+            "hidden": true,
+            "properties": {
+                "max_memory": {
+                    "type": "string",
+                    "default": "12.GB",
+                    "description": "Maximum memory available for a process.",
+                    "hidden": true
+                },
+                "max_cpus": {
+                    "type": "integer",
+                    "default": 8,
+                    "description": "Maximum CPUs available for a process.",
+                    "hidden": true
+                },
+                "max_time": {
+                    "type": "string",
+                    "default": "240.h",
+                    "description": "Maximum time for a process.",
+                    "hidden": true
+                },
+                "mzml_cache_directory": {
+                    "type": "string",
+                    "description": "Directory for caching converted mzML files.",
+                    "hidden": true
+                },
+                "panorama_cache_directory": {
+                    "type": "string",
+                    "description": "Directory for caching PanoramaWeb file downloads.",
+                    "hidden": true
+                },
+                "aws": {
+                    "type": "object",
+                    "description": "AWS configuration parameters.",
+                    "hidden": true,
+                    "default": {},
+                    "properties": {
+                        "region": {
+                            "type": "string",
+                            "default": "us-west-2",
+                            "description": "AWS region."
+                        },
+                        "batch": {
+                            "type": "object",
+                            "default": {},
+                            "description": "AWS Batch configuration.",
+                            "properties": {
+                                "cliPath": {
+                                    "type": "string",
+                                    "default": "/usr/local/aws-cli/v2/current/bin/aws",
+                                    "description": "Path to AWS CLI."
+                                },
+                                "logsGroup": {
+                                    "type": "string",
+                                    "default": "/batch/tei-nextflow-batch",
+                                    "description": "AWS Batch logs group."
+                                },
+                                "maxConnections": {
+                                    "type": "integer",
+                                    "default": 20,
+                                    "description": "Maximum connections for AWS Batch."
+                                },
+                                "connectionTimeout": {
+                                    "type": "integer",
+                                    "default": 10000,
+                                    "description": "Connection timeout for AWS Batch in milliseconds."
+                                },
+                                "uploadStorageClass": {
+                                    "type": "string",
+                                    "default": "INTELLIGENT_TIERING",
+                                    "description": "S3 storage class for uploads."
+                                },
+                                "storageEncryption": {
+                                    "type": "string",
+                                    "default": "AES256",
+                                    "description": "S3 storage encryption."
+                                },
+                                "retryMode": {
+                                    "type": "string",
+                                    "default": "standard",
+                                    "description": "AWS retry mode."
+                                }
+                            }
+                        }
+                    }
+                },
+                "images": {
+                    "type": "object",
+                    "description": "Container image configuration.",
+                    "hidden": true,
+                    "default": {}
+                },
+                "citations": {
+                    "type": "object",
+                    "description": "Citation configuration.",
+                    "hidden": true,
+                    "default": {}
+                }
+            }
+        }
+    },
+    "allOf": [
+        { "$ref": "#/$defs/input_output_options" },
+        { "$ref": "#/$defs/diann_options" },
+        { "$ref": "#/$defs/carafe_options" },
+        { "$ref": "#/$defs/msconvert_options" },
+        { "$ref": "#/$defs/notification_options" },
+        { "$ref": "#/$defs/infrastructure_options" }
+    ]
+}
