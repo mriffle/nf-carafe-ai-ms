@@ -45,6 +45,7 @@ process DIANN_SEARCH_LIB_FREE {
             --fasta-search \
             --predictor \
             ${diann_params} \
+            ${exportQuantParam} \
             > >(tee "diann.stdout") 2> >(tee "diann.stderr" >&2)
 
         # DiaNN does weird things with output file names depending on the version
