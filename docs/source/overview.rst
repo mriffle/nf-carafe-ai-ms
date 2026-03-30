@@ -36,11 +36,16 @@ The workflow is made up of the following software components, each may be run mu
 
 *  **msconvert** (https://proteowizard.sourceforge.io/)
 
-   If users supply RAW files as input, they will be converted to mzML using *msconvert*.
+   If users supply Thermo RAW files (``.raw``) as input, they will be converted to mzML using *msconvert*.
+
+*  **unzip** (Bruker data extraction)
+
+   If users supply Bruker ``.d.zip`` files as input, they will be unzipped to ``.d`` directories for processing. Bruker ``.d`` directories may also be supplied directly as input (local paths only; PanoramaWeb requires ``.d.zip`` files).
 
 *  **DIA-NN** (https://github.com/vdemichev/DiaNN)
 
-   DIA-NN (1.8.1) is used to generate data as input to Carafe.
+   DIA-NN (1.8.1) is used to generate data as input to Carafe. Newer versions (2.x) may be used by building
+   a custom Docker image. See :doc:`custom_diann` for instructions.
 
 *  **Carafe** (https://github.com/Noble-Lab/Carafe)
 

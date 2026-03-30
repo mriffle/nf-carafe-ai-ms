@@ -18,9 +18,15 @@ process ENCYCLOPEDIA_TSV_TO_DLIB {
         path("*.stderr"), emit: stderr
         path("*.stdout"), emit: stdout
         path("carafe_spectral_library.dlib"), emit: dlib
+        path("encyclopedia_version.json"), emit: version_info
+        val 'encyclopedia', emit: citation
 
     script:
+    def container_image = task.container ?: 'none'
     """
+    ENCY_VERSION=\$(${exec_java_command(task.memory)} --version 2>&1 | egrep -o '[0-9]+\\.[0-9]+(\\.[0-9]+)*(-[0-9]+)?' | head -1 || true)
+    ENCY_VERSION=\${ENCY_VERSION:-unknown}
+
     ${exec_java_command(task.memory)} \\
         -numberOfThreadsUsed ${task.cpus} \\
         -convert \\
@@ -29,11 +35,16 @@ process ENCYCLOPEDIA_TSV_TO_DLIB {
         -i "${tsv_file}" \\
         -f "${fasta}" \\
         > >(tee "encyclopedia-convert-tsv.stdout") 2> >(tee "encyclopedia-convert-tsv.stderr" >&2)
+
+    cat <<VEOF > encyclopedia_version.json
+{"program": "EncyclopeDIA", "version": "\$ENCY_VERSION", "container": "${container_image}"}
+VEOF
     """
 
     stub:
     """
     touch stub.stderr stub.stdout
     touch "carafe_spectral_library.dlib"
+    echo '{"program": "EncyclopeDIA", "version": "stub", "container": "stub"}' > encyclopedia_version.json
     """
 }

@@ -7,12 +7,13 @@ include { get_input_files } from "./workflows/get_input_files"
 include { diann_search } from "./workflows/diann_search"
 include { carafe } from "./workflows/carafe"
 include { get_mzmls } from "./workflows/get_mzmls"
-include { save_run_details } from "./workflows/save_run_details"
 
 // modules
 include { GET_AWS_USER_ID } from "./modules/aws"
 include { BUILD_AWS_SECRETS } from "./modules/aws"
 include { ENCYCLOPEDIA_TSV_TO_DLIB } from "./modules/encyclopedia"
+include { WRITE_CITATIONS } from "./modules/citations"
+include { WRITE_VERSIONS } from "./modules/versions"
 
 // useful functions and variables
 include { param_to_list } from "./workflows/get_input_files"
@@ -25,8 +26,14 @@ PANORAMA_URL = 'https://panoramaweb.org'
 //
 workflow {
 
-    if(!params.spectra_file) {
-        error "`spectra_file` is a required parameter."
+    log.info file("${projectDir}/conf/startup.txt").text
+
+    if(!params.spectra_file && !params.spectra_dir) {
+        error "Either `spectra_file` or `spectra_dir` must be specified."
+    }
+
+    if(params.spectra_file && params.spectra_dir) {
+        error "`spectra_file` and `spectra_dir` cannot both be specified."
     }
 
     if(!params.carafe_fasta_file) {
@@ -36,11 +43,6 @@ workflow {
     if(params.output_format != 'diann' && params.output_format != 'encyclopedia') {
         error "`output_format` must be one of 'diann' or 'encyclopedia'"
     }
-
-    // version file channles
-    diann_version = null
-    carafe_version = null
-    proteowizard_version = null // TODO: populate this
 
     // if accessing panoramaweb and running on aws, set up an aws secret
     if(workflow.profile == 'aws' && is_panorama_used()) {
@@ -52,22 +54,28 @@ workflow {
     }
 
     get_input_files(aws_secret_id)   // get input files
-    get_mzmls(params.spectra_file, aws_secret_id)  // get mzmls
+    get_mzmls(aws_secret_id)  // get mzmls
 
     // set up some convenience variables
     carafe_fasta_file = get_input_files.out.carafe_fasta_file
     diann_fasta_file = get_input_files.out.diann_fasta_file
     mzml_file_ch = get_mzmls.out.mzml_ch
 
+    // collect citations and versions from subworkflows
+    all_citations = get_input_files.out.citations
+        .mix(get_mzmls.out.citations)
+    all_versions = get_input_files.out.versions
+        .mix(get_mzmls.out.versions)
+
     if(!params.peptide_results_file) {
         diann_search(
             mzml_file_ch,
             params.diann_fasta_file ? diann_fasta_file : carafe_fasta_file
         )
-        diann_version = diann_search.out.diann_version
-        peptide_report_file = diann_search.out.precursor_tsv
+        peptide_report_file = diann_search.out.precursor_report
+        all_citations = all_citations.mix(diann_search.out.citations)
+        all_versions = all_versions.mix(diann_search.out.versions)
     } else {
-        diann_version = Channel.empty()
         peptide_report_file = get_input_files.out.peptide_report
     }
 
@@ -75,7 +83,10 @@ workflow {
         mzml_file_ch,
         carafe_fasta_file,
         peptide_report_file,
-        params.carafe_cli_options ? params.carafe_cli_options : '',
+        params.cli_options,
+        params.include_phosphorylation,
+        params.include_oxidized_methionine,
+        params.max_mod_option,
         params.output_format
     )
 
@@ -84,21 +95,29 @@ workflow {
             carafe_fasta_file,
             carafe.out.speclib_tsv
         )
+        all_citations = all_citations.mix(ENCYCLOPEDIA_TSV_TO_DLIB.out.citation)
+        all_versions = all_versions.mix(ENCYCLOPEDIA_TSV_TO_DLIB.out.version_info)
     }
 
-    carafe_version = carafe.out.carafe_version
-    version_files = carafe_version.concat(diann_version).splitText()
+    all_citations = all_citations.mix(carafe.out.citations)
+    WRITE_CITATIONS(all_citations.unique().collect())
 
-    // input_files = diann_fasta_file.map{ it -> ['DIA-NN FASTA file', it.name] }    
-    // if(!params.peptide_results_file) {
-    //     input_files = input_files.concat( wide_mzml_ch.map{ it -> ['Spectra file', it.baseName] })   
-    // }
-    // if(params.carafe_fasta_file) {
-    //     input_files = input_files.concat(carafe_fasta_file.map{ it -> ['Carafe FASTA file', it.name] })
-    // }
-    input_files = Channel.empty()
-    //save_run_details(input_files.collect(), version_files.collect())
-    //run_details_file = save_run_details.out.run_details
+    all_versions = all_versions.mix(carafe.out.versions)
+    all_version_data = all_versions.map { file ->
+        new LinkedHashMap(new groovy.json.JsonSlurper().parseText(file.text))
+    }
+
+    workflow_metadata = Channel.of(
+        ["Nextflow run at", workflow.start.toString()],
+        ["Nextflow version", nextflow.version.toString()],
+        ["Workflow git address", (workflow.repository ?: '').toString()],
+        ["Workflow git revision (branch)", (workflow.revision ?: '').toString()],
+        ["Workflow git commit hash", (workflow.commitId ?: '').toString()],
+        ["Run session ID", workflow.sessionId.toString()],
+        ["Command line", workflow.commandLine.toString()]
+    ).collect(flat: false)
+
+    WRITE_VERSIONS(workflow_metadata, all_version_data.collect())
 
 }
 
@@ -113,7 +132,8 @@ def is_panorama_used() {
     return (params.diann_fasta_file     && panorama_auth_required_for_url(params.diann_fasta_file)) ||
            (params.carafe_fasta_file    && panorama_auth_required_for_url(params.carafe_fasta_file)) ||
            (params.peptide_results_file && panorama_auth_required_for_url(params.peptide_results_file)) ||
-           (params.spectra_file         && panorama_auth_required_for_url(params.spectra_file))
+           (params.spectra_file         && panorama_auth_required_for_url(params.spectra_file)) ||
+           (params.spectra_dir          && panorama_auth_required_for_url(params.spectra_dir))
 }
 
 def panorama_auth_required_for_url(url) {

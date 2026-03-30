@@ -59,33 +59,64 @@ process PANORAMA_GET_RAW_FILE_LIST {
     secret 'PANORAMA_API_KEY'
 
     input:
-        each web_dav_url
+        val web_dav_url
         val file_glob
         val aws_secret_id
 
     output:
-        tuple val(web_dav_url), path("*.download"), emit: raw_file_placeholders
+        path("download_files.txt"), emit: download_file_list
         path("*.stdout"), emit: stdout
         path("*.stderr"), emit: stderr
+        path("panorama_version.json"), emit: version_info
+        val 'panorama', emit: citation
 
     script:
     // convert glob to regex that we can use to grep lines from a file of filenames
-    String regex = '^' + escapeRegex(file_glob).replaceAll("\\*", ".*") + '$'
+    String file_regex = '^' + escapeRegex(file_glob).replaceAll("\\*", ".*") + '$'
+
+    def container_image = task.container ?: 'none'
+    def panorama_version = (container_image != 'none' && container_image.contains(':')) ? container_image.tokenize(':').last() : 'unknown'
 
     """
     ${setupPanoramaAPIKeySecret(aws_secret_id, task.executor)}
 
-    echo "Running file list from Panorama..."
+    echo "Listing files from Panorama..."
         ${exec_java_command(task.memory)} \
         -l \
-        -e raw \
         -w "${web_dav_url}" \
         -k \$PANORAMA_API_KEY \
-        -o panorama_files.txt \
-        > >(tee "panorama-get-files.stdout") 2> >(tee "panorama-get-files.stderr" >&2) && \
-        grep -P '${regex}' panorama_files.txt | xargs -I % sh -c 'touch %.download'
+        -o all_files.txt \
+        > >(tee "panorama-get-file-list.stdout") 2> >(tee "panorama-get-file-list.stderr" >&2)
 
+    grep -P '${file_regex}' all_files.txt | xargs -d'\\n' printf '${web_dav_url.replaceAll("%", "%%")}/%s\\n' > download_files.txt
+
+    echo '{"program": "Panorama Java client", "version": "${panorama_version}", "container": "${container_image}"}' > panorama_version.json
     echo "Done!" # Needed for proper exit
+    """
+
+    stub:
+    // convert glob to regex for stub filtering (same as script block)
+    String stub_file_regex = '^' + escapeRegex(file_glob).replaceAll("\\*", ".*") + '$'
+
+    """
+    # mock a file listing with various file types
+    cat > all_files.txt <<'FILELIST'
+sample1.raw
+sample2.raw
+sample3.raw
+sample1.mzML
+sample2.mzML
+sample3.mzML
+sample1.d.zip
+sample2.d.zip
+sample3.d.zip
+readme.txt
+notes.pdf
+FILELIST
+
+    grep -P '${stub_file_regex}' all_files.txt | xargs -d'\\n' printf '${web_dav_url.replaceAll("%", "%%")}/%s\\n' > download_files.txt
+    touch stub.stdout stub.stderr
+    echo '{"program": "Panorama Java client", "version": "stub", "container": "stub"}' > panorama_version.json
     """
 }
 
@@ -105,9 +136,13 @@ process PANORAMA_GET_FILE {
         path("${file(web_dav_dir_url).name}"), emit: panorama_file
         path("*.stdout"), emit: stdout
         path("*.stderr"), emit: stderr
+        path("panorama_version.json"), emit: version_info
+        val 'panorama', emit: citation
 
     script:
         file_name = file(web_dav_dir_url).name
+        def container_image = task.container ?: 'none'
+        def panorama_version = (container_image != 'none' && container_image.contains(':')) ? container_image.tokenize(':').last() : 'unknown'
         """
         ${setupPanoramaAPIKeySecret(aws_secret_id, task.executor)}
 
@@ -117,6 +152,7 @@ process PANORAMA_GET_FILE {
             -w "${web_dav_dir_url}" \
             -k \$PANORAMA_API_KEY \
             > >(tee "panorama-get-${file_name}.stdout") 2> >(tee "panorama-get-${file_name}.stderr" >&2)
+        echo '{"program": "Panorama Java client", "version": "${panorama_version}", "container": "${container_image}"}' > panorama_version.json
         echo "Done!" # Needed for proper exit
         """
 
@@ -124,6 +160,7 @@ process PANORAMA_GET_FILE {
     """
     touch "${file(web_dav_dir_url).name}"
     touch stub.stderr stub.stdout
+    echo '{"program": "Panorama Java client", "version": "stub", "container": "stub"}' > panorama_version.json
     """
 }
 

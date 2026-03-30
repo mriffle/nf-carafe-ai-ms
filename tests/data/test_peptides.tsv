@@ -1,0 +1,2 @@
+File.Name	Run	Protein.Group	Protein.Ids	Protein.Names	Genes	PG.Quantity	PG.Normalised	PG.MaxLFQ	Precursor.Id	Precursor.Charge	Q.Value	PEP	Global.Q.Value	Protein.Q.Value	Global.PG.Q.Value	Modified.Sequence	Stripped.Sequence	Precursor.Normalised	Precursor.Quantity	RT	RT.Start	RT.Stop	iRT	Predicted.RT	Predicted.iRT
+test.mzML	test	P00000	P00000	TEST_HUMAN	TEST	1000	1000	1000	MAAAAAAAAAK2	2	0.001	0.001	0.001	0.001	0.001	MAAAAAAAAAK	MAAAAAAAAAK	1000	1000	10.0	9.5	10.5	10.0	10.0	10.0

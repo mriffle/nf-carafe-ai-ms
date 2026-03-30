@@ -36,14 +36,22 @@ Below is a complete description of all parameters that may be included in these 
 
     This workflow can process files stored in **PanoramaWeb**. When specifying directories or file locations, any paths that begin with ``https://`` will be interpreted as being PanoramaWeb locations.
 
-    For example, to process raw files stored in PanoramaWeb, you would have the following in your pipeline.config file:
+    For example, to process a single raw file stored in PanoramaWeb, you would have the following in your pipeline.config file:
 
     .. code-block:: bash
 
-        quant_spectra_dir= 'https://panoramaweb.org/_webdav/path/to/@files/RawFiles/'
+        spectra_file = 'https://panoramaweb.org/_webdav/path/to/@files/RawFiles/my_file.raw'
 
+    To process multiple files from a PanoramaWeb directory:
 
-    Where, ``https://panoramaweb.org/_webdav/path/to/@files/RawFiles/`` is the WebDav URL of the folder on the Panorama server.
+    .. code-block:: bash
+
+        spectra_dir = 'https://panoramaweb.org/_webdav/path/to/@files/RawFiles'
+        spectra_dir_glob = '*.raw'
+
+    Where the URL is the WebDav URL of the file or directory on the Panorama server.
+
+    **Bruker data on PanoramaWeb:** Only ``.d.zip`` files can be downloaded from PanoramaWeb (not ``.d`` directories). Use a glob pattern like ``*.d.zip`` when processing Bruker data from PanoramaWeb.
 
 
 The ``params`` Section
@@ -59,15 +67,30 @@ The ``params`` Section
    * - ✓
      - ``carafe_fasta_file``
      - FASTA file used by Carafe to generate final spectral library.
-   * - ✓
+   * - \*
      - ``spectra_file``
-     - The raw or mzML file to process. 
-   * - 
+     - Path to a single spectra file or directory to process. Supported types: Thermo RAW (``.raw``), mzML (``.mzML``), Bruker raw directory (``.d``), or Bruker zipped raw (``.d.zip``). May be a local path, S3 URI, or PanoramaWeb URL. Note: Bruker ``.d`` directories cannot be downloaded from PanoramaWeb; use ``.d.zip`` files instead. Mutually exclusive with ``spectra_dir``.
+   * - \*
+     - ``spectra_dir``
+     - Path to a directory containing spectra files (local path or PanoramaWeb WebDAV URL). Supported file types: ``.raw``, ``.mzML``, ``.d``, or ``.d.zip``. Note: Bruker ``.d`` directories cannot be downloaded from PanoramaWeb; use ``.d.zip`` files instead. Mutually exclusive with ``spectra_file``. Use with ``spectra_dir_glob`` to select which files to process.
+   * -
+     - ``spectra_dir_glob``
+     - Glob pattern to select files from ``spectra_dir``. All matched files must be the same type (``.raw``, ``.mzML``, ``.d``, or ``.d.zip``). Default: ``'*.raw'``
+   * -
      - ``output_format``
      - The final output format of the generated spectral library. Must be one of ``'diann'`` or ``'encyclopedia'``. Default: ``'diann'``
-   * - 
-     - ``carafe_cli_options``
-     - Command line options to pass to Carafe. Note: Do not set the ``se``, ``lf_type``, ``-db``, ``-i``, ``-o`` parameters, these are handled by the workflow. The default is to not pass any command line option and use Carafe's defaults, see https://github.com/Noble-Lab/Carafe for more details.
+   * -
+     - ``cli_options``
+     - Command line options to pass to Carafe. The default includes sensible settings for most general DIA searches. Do not set the ``-mode``, ``-varMod``, ``-maxVar``, ``-ms``, ``-db``, ``-i``, ``-se``, ``-lf_type``, or ``-device`` parameters, these are handled by the workflow. See https://github.com/Noble-Lab/Carafe for more details.
+   * -
+     - ``include_phosphorylation``
+     - Set to ``true`` to include phosphorylation (STY) as a variable modification in the Carafe spectral library. Default: ``false``.
+   * -
+     - ``include_oxidized_methionine``
+     - Set to ``true`` to include oxidized methionine (M) as a variable modification in the Carafe spectral library. Default: ``false``.
+   * -
+     - ``max_mod_option``
+     - The maximum number of variable modifications allowed per peptide, specified as a Carafe CLI argument. Ignored if no variable modifications are enabled. Default: ``'-maxVar 1'``.
    * - 
      - ``diann_fasta_file``
      - The FASTA file used by DIA-NN. If not set ``carafe_fasta_file`` will be used. Default: not set.
