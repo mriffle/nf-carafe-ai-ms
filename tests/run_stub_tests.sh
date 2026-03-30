@@ -110,7 +110,16 @@ run_test "Pre-computed peptides + encyclopedia output" \
     --output_format "encyclopedia"
 
 # ──────────────────────────────────────────────────────────────────────
-# Test 5: RAW file input (triggers msconvert)
+# Test 5: Pre-computed Parquet peptide results (skip DIA-NN)
+# Exercises: CARAFE only (DIA-NN is skipped)
+# ──────────────────────────────────────────────────────────────────────
+run_test "Pre-computed Parquet peptide results (skip DIA-NN)" \
+    --spectra_file "$SCRIPT_DIR/data/test.mzML" \
+    --carafe_fasta_file "$SCRIPT_DIR/data/test.fasta" \
+    --peptide_results_file "$SCRIPT_DIR/data/test_peptides.parquet"
+
+# ──────────────────────────────────────────────────────────────────────
+# Test 6: RAW file input (triggers msconvert)
 # Exercises: MSCONVERT, DIANN_SEARCH_LIB_FREE, CARAFE
 # ──────────────────────────────────────────────────────────────────────
 run_test "RAW input (msconvert + DIA-NN + Carafe)" \
@@ -118,7 +127,7 @@ run_test "RAW input (msconvert + DIA-NN + Carafe)" \
     --carafe_fasta_file "$SCRIPT_DIR/data/test.fasta"
 
 # ──────────────────────────────────────────────────────────────────────
-# Test 6: Separate DIA-NN and Carafe FASTA files
+# Test 7: Separate DIA-NN and Carafe FASTA files
 # Exercises: DIANN_SEARCH_LIB_FREE (with separate FASTA), CARAFE
 # ──────────────────────────────────────────────────────────────────────
 run_test "Separate DIA-NN FASTA file" \
@@ -127,7 +136,7 @@ run_test "Separate DIA-NN FASTA file" \
     --diann_fasta_file "$SCRIPT_DIR/data/test.fasta"
 
 # ──────────────────────────────────────────────────────────────────────
-# Test 7: Custom Carafe CLI options
+# Test 8: Custom Carafe CLI options
 # Exercises: CARAFE with additional CLI options
 # ──────────────────────────────────────────────────────────────────────
 run_test "Custom Carafe CLI options" \
@@ -136,7 +145,7 @@ run_test "Custom Carafe CLI options" \
     --cli_options "--custom-option"
 
 # ──────────────────────────────────────────────────────────────────────
-# Test 8: Phosphorylation and oxidized methionine modifications
+# Test 9: Phosphorylation and oxidized methionine modifications
 # Exercises: DIANN_SEARCH_LIB_FREE, CARAFE (with modification params)
 # ──────────────────────────────────────────────────────────────────────
 run_test "Phosphorylation + oxidized methionine modifications" \
@@ -146,7 +155,7 @@ run_test "Phosphorylation + oxidized methionine modifications" \
     --include_oxidized_methionine true
 
 # ──────────────────────────────────────────────────────────────────────
-# Test 9: spectra_dir with multiple mzML files
+# Test 10: spectra_dir with multiple mzML files
 # Exercises: DIANN_SEARCH_LIB_FREE, CARAFE (multiple inputs)
 # ──────────────────────────────────────────────────────────────────────
 run_test "spectra_dir with multiple mzML files" \
@@ -155,7 +164,7 @@ run_test "spectra_dir with multiple mzML files" \
     --carafe_fasta_file "$SCRIPT_DIR/data/test.fasta"
 
 # ──────────────────────────────────────────────────────────────────────
-# Test 10: spectra_dir with multiple RAW files (triggers msconvert)
+# Test 11: spectra_dir with multiple RAW files (triggers msconvert)
 # Exercises: MSCONVERT, DIANN_SEARCH_LIB_FREE, CARAFE (multiple inputs)
 # ──────────────────────────────────────────────────────────────────────
 run_test "spectra_dir with multiple RAW files" \
@@ -164,7 +173,7 @@ run_test "spectra_dir with multiple RAW files" \
     --carafe_fasta_file "$SCRIPT_DIR/data/test.fasta"
 
 # ──────────────────────────────────────────────────────────────────────
-# Test 11: spectra_dir with pre-computed peptide results
+# Test 12: spectra_dir with pre-computed peptide results
 # Exercises: CARAFE only (DIA-NN skipped, multiple mzML inputs)
 # ──────────────────────────────────────────────────────────────────────
 run_test "spectra_dir + pre-computed peptides (skip DIA-NN)" \
@@ -174,7 +183,7 @@ run_test "spectra_dir + pre-computed peptides (skip DIA-NN)" \
     --peptide_results_file "$SCRIPT_DIR/data/test_peptides.tsv"
 
 # ──────────────────────────────────────────────────────────────────────
-# Test 12: Bruker .d directory as spectra_file (pass through, no conversion)
+# Test 13: Bruker .d directory as spectra_file (pass through, no conversion)
 # Exercises: DIANN_SEARCH_LIB_FREE, CARAFE
 # ──────────────────────────────────────────────────────────────────────
 run_test "Bruker .d directory as spectra_file" \
@@ -182,7 +191,7 @@ run_test "Bruker .d directory as spectra_file" \
     --carafe_fasta_file "$SCRIPT_DIR/data/test.fasta"
 
 # ──────────────────────────────────────────────────────────────────────
-# Test 13: Bruker .d.zip file as spectra_file (triggers unzip)
+# Test 14: Bruker .d.zip file as spectra_file (triggers unzip)
 # Exercises: UNZIP_BRUKER_DATA, DIANN_SEARCH_LIB_FREE, CARAFE
 # ──────────────────────────────────────────────────────────────────────
 run_test "Bruker .d.zip as spectra_file (unzip + DIA-NN + Carafe)" \
@@ -190,7 +199,7 @@ run_test "Bruker .d.zip as spectra_file (unzip + DIA-NN + Carafe)" \
     --carafe_fasta_file "$SCRIPT_DIR/data/test.fasta"
 
 # ──────────────────────────────────────────────────────────────────────
-# Test 14: spectra_dir with multiple Bruker .d directories
+# Test 15: spectra_dir with multiple Bruker .d directories
 # Exercises: DIANN_SEARCH_LIB_FREE, CARAFE (multiple inputs)
 # ──────────────────────────────────────────────────────────────────────
 run_test "spectra_dir with multiple Bruker .d directories" \
@@ -199,7 +208,7 @@ run_test "spectra_dir with multiple Bruker .d directories" \
     --carafe_fasta_file "$SCRIPT_DIR/data/test.fasta"
 
 # ──────────────────────────────────────────────────────────────────────
-# Test 15: spectra_dir with multiple Bruker .d.zip files (triggers unzip)
+# Test 16: spectra_dir with multiple Bruker .d.zip files (triggers unzip)
 # Exercises: UNZIP_BRUKER_DATA, DIANN_SEARCH_LIB_FREE, CARAFE (multiple inputs)
 # ──────────────────────────────────────────────────────────────────────
 run_test "spectra_dir with multiple Bruker .d.zip files" \
@@ -208,7 +217,7 @@ run_test "spectra_dir with multiple Bruker .d.zip files" \
     --carafe_fasta_file "$SCRIPT_DIR/data/test.fasta"
 
 # ──────────────────────────────────────────────────────────────────────
-# Test 16: Panorama spectra_dir with RAW files (glob filters mock listing)
+# Test 17: Panorama spectra_dir with RAW files (glob filters mock listing)
 # Exercises: PANORAMA_GET_RAW_FILE_LIST, PANORAMA_GET_FILE (x3),
 #            MSCONVERT (x3), DIANN_SEARCH_LIB_FREE, CARAFE
 # ──────────────────────────────────────────────────────────────────────
@@ -218,7 +227,7 @@ run_test "Panorama spectra_dir with RAW files" \
     --carafe_fasta_file "$SCRIPT_DIR/data/test.fasta"
 
 # ──────────────────────────────────────────────────────────────────────
-# Test 17: Panorama spectra_dir with mzML files (skips msconvert)
+# Test 18: Panorama spectra_dir with mzML files (skips msconvert)
 # Exercises: PANORAMA_GET_RAW_FILE_LIST, PANORAMA_GET_FILE (x3),
 #            DIANN_SEARCH_LIB_FREE, CARAFE
 # ──────────────────────────────────────────────────────────────────────
@@ -228,7 +237,7 @@ run_test "Panorama spectra_dir with mzML files" \
     --carafe_fasta_file "$SCRIPT_DIR/data/test.fasta"
 
 # ──────────────────────────────────────────────────────────────────────
-# Test 18: Panorama spectra_dir with specific glob pattern
+# Test 19: Panorama spectra_dir with specific glob pattern
 # Exercises: PANORAMA_GET_RAW_FILE_LIST (glob filters to subset),
 #            PANORAMA_GET_FILE, MSCONVERT, DIANN_SEARCH_LIB_FREE, CARAFE
 # ──────────────────────────────────────────────────────────────────────
@@ -238,7 +247,7 @@ run_test "Panorama spectra_dir with specific glob" \
     --carafe_fasta_file "$SCRIPT_DIR/data/test.fasta"
 
 # ──────────────────────────────────────────────────────────────────────
-# Test 19: Panorama spectra_dir with Bruker .d.zip files (triggers unzip)
+# Test 20: Panorama spectra_dir with Bruker .d.zip files (triggers unzip)
 # Exercises: PANORAMA_GET_RAW_FILE_LIST, PANORAMA_GET_FILE (x3),
 #            UNZIP_BRUKER_DATA (x3), DIANN_SEARCH_LIB_FREE, CARAFE
 # ──────────────────────────────────────────────────────────────────────

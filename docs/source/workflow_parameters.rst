@@ -99,7 +99,7 @@ The ``params`` Section
      - The command line parameters passed to DIA-NN. Default: ``'--unimod4 --qvalue 0.01 --cut \'K*,R*,!*P\' --reanalyse --smart-profiling'``
    * -
      - ``peptide_results_file``
-     - The path to a .TSV file output by DIA-NN containing peptide identifications. If this parameter is set, the DIA-NN search will be skipped and this file used. Default: none (run DIA-NN).
+     - The path to a .TSV or .parquet file output by DIA-NN containing peptide identifications. If this parameter is set, the DIA-NN search will be skipped and this file used. Default: none (run DIA-NN).
    * -
      - ``msconvert.do_demultiplex``
      - If starting with raw files, this is the value used by ``msconvert`` for the ``do_demultiplex`` parameter. Default: ``true``.

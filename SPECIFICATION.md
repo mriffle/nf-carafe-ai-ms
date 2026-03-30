@@ -130,12 +130,13 @@ nf-carafe-ai-ms/
 │   └── workflows/
 │       └── stub-tests.yml         # GitHub Actions CI: stub tests on every push
 ├── tests/
-│   ├── run_stub_tests.sh          # Stub test runner (7 scenarios)
+│   ├── run_stub_tests.sh          # Stub test runner (20 scenarios)
 │   ├── stub_test.config           # Nextflow config for stub testing
 │   └── data/                      # Minimal dummy input files for stub tests
 │       ├── test.mzML
 │       ├── test.fasta
 │       ├── test_peptides.tsv
+│       ├── test_peptides.parquet
 │       ├── test.raw
 │       ├── test.d/               # Empty Bruker .d directory for spectra_file tests
 │       ├── test.d.zip            # Zip containing test.d/ for spectra_file tests
@@ -252,7 +253,7 @@ Each module file in `modules/` defines one or more Nextflow processes wrapping a
 |-----------|---------|-------------|
 | `spectra_dir_glob` | `'*.raw'` | Glob pattern to select files from `spectra_dir`. All matched files must have the same extension (.raw, .mzML, .d, or .d.zip). |
 | `output_format` | `'diann'` | Output format: `'diann'` (TSV) or `'encyclopedia'` (DLIB) |
-| `peptide_results_file` | `null` | Pre-computed DIA-NN results; skips DIA-NN search if provided |
+| `peptide_results_file` | `null` | Pre-computed DIA-NN results (TSV or Parquet); skips DIA-NN search if provided |
 | `diann_fasta_file` | `null` | Separate FASTA for DIA-NN; uses `carafe_fasta_file` if null |
 | `diann_params` | `'--unimod4 --qvalue 0.01 --cut \'K*,R*,!*P\' --reanalyse --smart-profiling'` | DIA-NN CLI options |
 | `cli_options` | `'-fdr 0.01 -ptm_site_prob 0.75 ...'` | Carafe CLI options with sensible defaults for most general DIA searches. Do not set `-mode`, `-varMod`, `-maxVar`, `-ms`, `-db`, `-i`, `-se`, `-lf_type`, or `-device` as the workflow manages these. |
@@ -370,12 +371,13 @@ Stub tests verify that all workflow paths are correctly wired together by runnin
 
 ```
 tests/
-├── run_stub_tests.sh        # Test runner script (19 test scenarios)
+├── run_stub_tests.sh        # Test runner script (20 test scenarios)
 ├── stub_test.config          # Nextflow config: disables Docker and reporting
 └── data/
     ├── test.mzML             # Minimal mzML for stub input
     ├── test.fasta            # Minimal FASTA for stub input
-    ├── test_peptides.tsv     # Minimal DIA-NN report for stub input
+    ├── test_peptides.tsv     # Minimal DIA-NN TSV report for stub input
+    ├── test_peptides.parquet  # Minimal DIA-NN Parquet report for stub input
     ├── test.raw              # Empty RAW file for msconvert path
     ├── test.d/               # Empty Bruker .d directory for spectra_file tests
     ├── test.d.zip            # Zip containing test.d/ for spectra_file tests
@@ -399,23 +401,24 @@ tests/
 |---|----------|-------------------|
 | 1 | Default: mzML + DIA-NN + Carafe (diann output) | `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
 | 2 | Encyclopedia output format | `DIANN_SEARCH_LIB_FREE`, `CARAFE`, `ENCYCLOPEDIA_TSV_TO_DLIB` |
-| 3 | Pre-computed peptide results (skip DIA-NN) | `CARAFE` |
+| 3 | Pre-computed TSV peptide results (skip DIA-NN) | `CARAFE` |
 | 4 | Pre-computed peptides + encyclopedia output | `CARAFE`, `ENCYCLOPEDIA_TSV_TO_DLIB` |
-| 5 | RAW input (triggers msconvert) | `MSCONVERT`, `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
-| 6 | Separate DIA-NN FASTA file | `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
-| 7 | Custom Carafe CLI options | `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
-| 8 | Phosphorylation + oxidized methionine modifications | `DIANN_SEARCH_LIB_FREE`, `CARAFE` (with modification params) |
-| 9 | spectra_dir with multiple mzML files | `DIANN_SEARCH_LIB_FREE`, `CARAFE` (multiple inputs) |
-| 10 | spectra_dir with multiple RAW files | `MSCONVERT`, `DIANN_SEARCH_LIB_FREE`, `CARAFE` (multiple inputs) |
-| 11 | spectra_dir + pre-computed peptides | `CARAFE` (multiple inputs, DIA-NN skipped) |
-| 12 | Bruker .d directory as spectra_file | `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
-| 13 | Bruker .d.zip file as spectra_file | `UNZIP_BRUKER_DATA`, `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
-| 14 | spectra_dir with multiple Bruker .d directories | `DIANN_SEARCH_LIB_FREE`, `CARAFE` (multiple inputs) |
-| 15 | spectra_dir with multiple Bruker .d.zip files | `UNZIP_BRUKER_DATA`, `DIANN_SEARCH_LIB_FREE`, `CARAFE` (multiple inputs) |
-| 16 | Panorama spectra_dir with RAW glob | `PANORAMA_GET_RAW_FILE_LIST`, `PANORAMA_GET_FILE` (x3), `MSCONVERT` (x3), `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
-| 17 | Panorama spectra_dir with mzML glob | `PANORAMA_GET_RAW_FILE_LIST`, `PANORAMA_GET_FILE` (x3), `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
-| 18 | Panorama spectra_dir with specific glob | `PANORAMA_GET_RAW_FILE_LIST`, `PANORAMA_GET_FILE` (x1), `MSCONVERT`, `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
-| 19 | Panorama spectra_dir with Bruker .d.zip glob | `PANORAMA_GET_RAW_FILE_LIST`, `PANORAMA_GET_FILE` (x3), `UNZIP_BRUKER_DATA` (x3), `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
+| 5 | Pre-computed Parquet peptide results (skip DIA-NN) | `CARAFE` |
+| 6 | RAW input (triggers msconvert) | `MSCONVERT`, `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
+| 7 | Separate DIA-NN FASTA file | `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
+| 8 | Custom Carafe CLI options | `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
+| 9 | Phosphorylation + oxidized methionine modifications | `DIANN_SEARCH_LIB_FREE`, `CARAFE` (with modification params) |
+| 10 | spectra_dir with multiple mzML files | `DIANN_SEARCH_LIB_FREE`, `CARAFE` (multiple inputs) |
+| 11 | spectra_dir with multiple RAW files | `MSCONVERT`, `DIANN_SEARCH_LIB_FREE`, `CARAFE` (multiple inputs) |
+| 12 | spectra_dir + pre-computed peptides | `CARAFE` (multiple inputs, DIA-NN skipped) |
+| 13 | Bruker .d directory as spectra_file | `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
+| 14 | Bruker .d.zip file as spectra_file | `UNZIP_BRUKER_DATA`, `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
+| 15 | spectra_dir with multiple Bruker .d directories | `DIANN_SEARCH_LIB_FREE`, `CARAFE` (multiple inputs) |
+| 16 | spectra_dir with multiple Bruker .d.zip files | `UNZIP_BRUKER_DATA`, `DIANN_SEARCH_LIB_FREE`, `CARAFE` (multiple inputs) |
+| 17 | Panorama spectra_dir with RAW glob | `PANORAMA_GET_RAW_FILE_LIST`, `PANORAMA_GET_FILE` (x3), `MSCONVERT` (x3), `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
+| 18 | Panorama spectra_dir with mzML glob | `PANORAMA_GET_RAW_FILE_LIST`, `PANORAMA_GET_FILE` (x3), `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
+| 19 | Panorama spectra_dir with specific glob | `PANORAMA_GET_RAW_FILE_LIST`, `PANORAMA_GET_FILE` (x1), `MSCONVERT`, `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
+| 20 | Panorama spectra_dir with Bruker .d.zip glob | `PANORAMA_GET_RAW_FILE_LIST`, `PANORAMA_GET_FILE` (x3), `UNZIP_BRUKER_DATA` (x3), `DIANN_SEARCH_LIB_FREE`, `CARAFE` |
 
 **Running locally:**
 ```bash
