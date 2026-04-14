@@ -56,8 +56,9 @@ process CARAFE {
         """
         ${apptainer_cmds}
 
-        # export HOME=\$PWD
-
+        export HOME=\$PWD
+        export HF_HOME=\$PWD/.hf_cache
+        
         ${exec_java_command(task.memory)} \\
         -ms "." \\
         -db "${fasta_file}" \\
