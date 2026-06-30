@@ -169,7 +169,7 @@ The workflow entry point. Calls `validateParameters()` (from the nf-schema plugi
 JSON Schema file (draft-2020-12) used by the nf-schema plugin for parameter validation and `--help` output. Defines parameter types, defaults, descriptions, required fields, and enum constraints. Parameters are organized into groups: Input/Output Options, DIA-NN Options, Carafe Options, msconvert Options, Notification Options, and Infrastructure Options (hidden). The `carafe_fasta_file` parameter is required; `output_format` is constrained to `'diann'` or `'encyclopedia'`. The `spectra_file`/`spectra_dir` mutual exclusivity is not expressible in JSON Schema and is enforced in `main.nf`.
 
 ### `nextflow.config`
-Defines all workflow parameters, execution profiles (standard/aws/slurm), AWS Batch settings, and Nextflow reporting (timeline, report, trace). Declares the `nf-schema@2.4.1` plugin. Resource capping is handled by Nextflow's native `process.resourceLimits` (set in `conf/base.config`), not a custom helper function. Top-level defaults for `max_cpus`, `max_memory`, and `max_time` are defined here so `resourceLimits` always resolves (profiles override them). The `panorama_url` param (default `https://panoramaweb.org`) is defined here and used to detect PanoramaWeb inputs. Includes `conf/base.config` and `container_images.config`.
+Defines all workflow parameters, execution profiles (standard/aws/slurm), AWS settings (the `aws.batch` executor scope and the `aws.client` S3/HTTP scope), and Nextflow reporting (timeline, report, trace). Declares the `nf-schema@2.4.1` plugin. Resource capping is handled by Nextflow's native `process.resourceLimits` (set in `conf/base.config`), not a custom helper function. Top-level defaults for `max_cpus`, `max_memory`, and `max_time` are defined here so `resourceLimits` always resolves (profiles override them). The `panorama_url` param (default `https://panoramaweb.org`) is defined here and used to detect PanoramaWeb inputs. Includes `conf/base.config` and `container_images.config`.
 
 Note on Nextflow 26 compatibility: Nextflow 26 introduced a strict configuration/DSL parser. To comply, the config contains no top-level `def` statements (the report timestamp is inlined; the former `check_max()` helper was removed), and `.nf` scripts avoid top-level bare assignments (e.g., the Panorama base URL is a param, not a script-level constant), declare all local variables with `def`, and order workflow sections as `take: → main: → emit:`.
 
@@ -379,7 +379,7 @@ Stub tests verify that all workflow paths are correctly wired together by runnin
 ```
 tests/
 ├── run_stub_tests.sh        # Test runner script (20 test scenarios)
-├── stub_test.config          # Nextflow config: disables Docker and reporting
+├── stub_test.config          # Nextflow config: disables Docker/reporting, caps resourceLimits for CI
 ├── mods.config               # Boolean modification params for the modifications test
 └── data/
     ├── test.mzML             # Minimal mzML for stub input

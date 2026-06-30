@@ -182,7 +182,7 @@
                         "batch": {
                             "type": "object",
                             "default": {},
-                            "description": "AWS Batch configuration.",
+                            "description": "AWS Batch executor configuration.",
                             "properties": {
                                 "cliPath": {
                                     "type": "string",
@@ -194,15 +194,27 @@
                                     "default": "/batch/tei-nextflow-batch",
                                     "description": "AWS Batch logs group."
                                 },
+                                "retryMode": {
+                                    "type": "string",
+                                    "default": "standard",
+                                    "description": "AWS retry mode."
+                                }
+                            }
+                        },
+                        "client": {
+                            "type": "object",
+                            "default": {},
+                            "description": "AWS S3 / HTTP client configuration.",
+                            "properties": {
                                 "maxConnections": {
                                     "type": "integer",
                                     "default": 20,
-                                    "description": "Maximum connections for AWS Batch."
+                                    "description": "Maximum connections for the AWS client."
                                 },
                                 "connectionTimeout": {
                                     "type": "integer",
                                     "default": 10000,
-                                    "description": "Connection timeout for AWS Batch in milliseconds."
+                                    "description": "Connection timeout for the AWS client in milliseconds."
                                 },
                                 "uploadStorageClass": {
                                     "type": "string",
@@ -213,11 +225,6 @@
                                     "type": "string",
                                     "default": "AES256",
                                     "description": "S3 storage encryption."
-                                },
-                                "retryMode": {
-                                    "type": "string",
-                                    "default": "standard",
-                                    "description": "AWS retry mode."
                                 }
                             }
                         }
