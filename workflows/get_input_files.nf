@@ -3,8 +3,6 @@ include { PANORAMA_GET_FILE as PANORAMA_GET_DIANN_FASTA } from "../modules/panor
 include { PANORAMA_GET_FILE as PANORAMA_GET_CARAFE_FASTA } from "../modules/panorama"
 include { PANORAMA_GET_FILE as PANORAMA_GET_PEPTIDE_REPORT } from "../modules/panorama"
 
-PANORAMA_URL = 'https://panoramaweb.org'
-
 /**
 * Process a parameter variable which is specified as either a single value or List.
 * If param_variable has multiple lines, each line with text is returned as an
@@ -28,13 +26,6 @@ workflow get_input_files {
 
    take:
         aws_secret_id
-
-   emit:
-       diann_fasta_file
-       carafe_fasta_file
-       peptide_report
-       versions
-       citations
 
     main:
 
@@ -80,8 +71,15 @@ workflow get_input_files {
         } else {
             peptide_report = null
         }
+
+    emit:
+        diann_fasta_file
+        carafe_fasta_file
+        peptide_report
+        versions
+        citations
 }
 
 def panorama_auth_required_for_url(url) {
-    return url.startsWith(PANORAMA_URL) && !url.contains("/_webdav/Panorama%20Public/")
+    return url.startsWith(params.panorama_url) && !url.contains("/_webdav/Panorama%20Public/")
 }

@@ -10,7 +10,7 @@ The workflow automates the full pipeline: acquiring input files (locally, from S
 **License:** Apache 2.0
 **Documentation:** https://nf-carafe-ai-ms.readthedocs.io/
 **Source:** https://github.com/mriffle/nf-carafe-ai-ms
-**Requires:** Nextflow >= 23.04.0
+**Requires:** Nextflow >= 25.10.4 (tested on Nextflow 25.10.4 and 26.04.4)
 
 ---
 
@@ -131,8 +131,9 @@ nf-carafe-ai-ms/
 │   └── workflows/
 │       └── stub-tests.yml         # GitHub Actions CI: stub tests on every push
 ├── tests/
-│   ├── run_stub_tests.sh          # Stub test runner (20 scenarios)
+│   ├── run_stub_tests.sh          # Stub test runner (20 scenarios); honors NF_VERSIONS
 │   ├── stub_test.config           # Nextflow config for stub testing
+│   ├── mods.config                # Boolean modification params for the modifications test
 │   └── data/                      # Minimal dummy input files for stub tests
 │       ├── test.mzML
 │       ├── test.fasta
@@ -168,7 +169,9 @@ The workflow entry point. Calls `validateParameters()` (from the nf-schema plugi
 JSON Schema file (draft-2020-12) used by the nf-schema plugin for parameter validation and `--help` output. Defines parameter types, defaults, descriptions, required fields, and enum constraints. Parameters are organized into groups: Input/Output Options, DIA-NN Options, Carafe Options, msconvert Options, Notification Options, and Infrastructure Options (hidden). The `carafe_fasta_file` parameter is required; `output_format` is constrained to `'diann'` or `'encyclopedia'`. The `spectra_file`/`spectra_dir` mutual exclusivity is not expressible in JSON Schema and is enforced in `main.nf`.
 
 ### `nextflow.config`
-Defines all workflow parameters, execution profiles (standard/aws/slurm), AWS Batch settings, Nextflow reporting (timeline, report, trace), and the `check_max()` utility function for capping resource requests. Declares the `nf-schema@2.3.0` plugin and configures validation behavior (lenient mode enabled, `images` and `citations` params ignored). Includes `conf/base.config` and `container_images.config`.
+Defines all workflow parameters, execution profiles (standard/aws/slurm), AWS Batch settings, and Nextflow reporting (timeline, report, trace). Declares the `nf-schema@2.4.1` plugin. Resource capping is handled by Nextflow's native `process.resourceLimits` (set in `conf/base.config`), not a custom helper function. Top-level defaults for `max_cpus`, `max_memory`, and `max_time` are defined here so `resourceLimits` always resolves (profiles override them). The `panorama_url` param (default `https://panoramaweb.org`) is defined here and used to detect PanoramaWeb inputs. Includes `conf/base.config` and `container_images.config`.
+
+Note on Nextflow 26 compatibility: Nextflow 26 introduced a strict configuration/DSL parser. To comply, the config contains no top-level `def` statements (the report timestamp is inlined; the former `check_max()` helper was removed), and `.nf` scripts avoid top-level bare assignments (e.g., the Panorama base URL is a param, not a script-level constant), declare all local variables with `def`, and order workflow sections as `take: → main: → emit:`.
 
 Note: The file header comment references `nf-maccoss-trex`, which is a legacy name; the actual project is `nf-carafe-ai-ms`.
 
@@ -179,11 +182,11 @@ Maps logical image names to versioned container URIs on Quay.io (`quay.io/protio
 Maps tool citation keys to their display name and reference string. Each entry has a `name` (display name) and `ref` (citation text). Keys defined: `panorama`, `carafe`, `msconvert`, `diann`, `encyclopedia`. Processes emit their citation key; the `WRITE_CITATIONS` process looks up entries here to produce `citations.txt`.
 
 ### `conf/base.config`
-Defines default process resources and resource labels used throughout modules.
+Defines default process resources and resource labels used throughout modules. Resource requests are capped by `process.resourceLimits = [cpus: params.max_cpus, memory: params.max_memory, time: params.max_time]` — Nextflow's native ceiling mechanism (introduced in Nextflow 24.04), which replaced the legacy `check_max()` helper. This list is evaluated when `base.config` is parsed (before any external `-c` config is merged), so the built-in profiles (which set `params.max_*`) work, but overriding `params.max_cpus`/`max_memory`/`max_time` from a user `-c` config does **not** change the limits. To adjust limits from a user config, set `process.resourceLimits` directly — `resources/pipeline.config` shows this.
 
-**Default process behavior**: 1 CPU, 4 GB, 1h (scaling with retry attempts). Retries up to 3 times on exit codes 143, 137, 104, 134, 139, 5, 6, null; otherwise finishes on error.
+**Default process behavior**: 1 CPU, 4 GB, 1h (scaling with retry attempts via `task.attempt`). Retries up to 3 times on exit codes 143, 137, 104, 134, 139, 5, 6, null; otherwise finishes on error.
 
-**Resource labels** (resources scale with retry attempts via `check_max()` unless noted as "constant"):
+**Resource labels** (resources scale with retry attempts via `task.attempt`, capped by `resourceLimits`, unless noted as "constant"):
 - `process_low_constant`: 2 CPUs, 8 GB, 1h (fixed, no scaling)
 - `process_low`: 2 CPUs, 8 GB, 2h
 - `process_medium`: 4 CPUs, 15 GB, 8h
@@ -377,6 +380,7 @@ Stub tests verify that all workflow paths are correctly wired together by runnin
 tests/
 ├── run_stub_tests.sh        # Test runner script (20 test scenarios)
 ├── stub_test.config          # Nextflow config: disables Docker and reporting
+├── mods.config               # Boolean modification params for the modifications test
 └── data/
     ├── test.mzML             # Minimal mzML for stub input
     ├── test.fasta            # Minimal FASTA for stub input
@@ -428,11 +432,14 @@ tests/
 ```bash
 bash tests/run_stub_tests.sh          # run all stub tests (auto-cleans on completion)
 bash tests/run_stub_tests.sh clean    # remove leftover test artifacts manually
+
+# Run the whole suite once per Nextflow version (Nextflow self-installs each via NXF_VER):
+NF_VERSIONS="25.10.4 26.04.4" bash tests/run_stub_tests.sh
 ```
 
 ### CI/CD
 
-Stub tests run automatically on every push and pull request via GitHub Actions (`.github/workflows/stub-tests.yml`). The CI installs Nextflow, then runs the full stub test suite.
+Stub tests run automatically on every push and pull request via GitHub Actions (`.github/workflows/stub-tests.yml`). The CI runs a matrix across Nextflow **25.10.4** and **26.04.4** (`fail-fast: false`, so a failure on one version does not cancel the other), installing each version via `nf-core/setup-nextflow` and running the full stub test suite.
 
 ### Requirements When Changing or Adding Processes
 
@@ -463,7 +470,7 @@ Failure to update documentation alongside code changes results in specification 
 
 ## Known Notes
 
-- **Parameter validation** uses the nf-schema plugin (`nf-schema@2.3.0`) with `nextflow_schema.json`. Schema handles type checking, required fields (`carafe_fasta_file`), and enum constraints (`output_format`). The `spectra_file`/`spectra_dir` mutual exclusivity is enforced via custom logic in `main.nf` because JSON Schema cannot express "exactly one of two optional parameters." The `images` and `citations` map parameters are excluded from schema validation via `defaultIgnoreParams`.
+- **Parameter validation** uses the nf-schema plugin (`nf-schema@2.4.1`) with `nextflow_schema.json`. Schema handles type checking, required fields (`carafe_fasta_file`), and enum constraints (`output_format`). The `spectra_file`/`spectra_dir` mutual exclusivity is enforced via custom logic in `main.nf` because JSON Schema cannot express "exactly one of two optional parameters." The `images` and `citations` map parameters are defined in the schema with `additionalProperties` (rather than being excluded via `defaultIgnoreParams`), so they validate cleanly without a `validation` config block. Because Nextflow 26 removed support for the nf-schema `validation.lenientMode` option (which previously coerced command-line strings to other types), boolean parameters such as `include_phosphorylation` must be set via a config file (real Groovy booleans), not via command-line flags — a CLI `--flag true` is stored as the string `"true"` and fails boolean validation.
 - The `PANORAMA_GET_RAW_FILE_LIST` process is used by `get_mzmls` when `spectra_dir` is a PanoramaWeb URL. It lists files, filters by glob, and outputs download URLs.
 - The `DESTROY_AWS_SECRETS` process in `modules/aws.nf` is commented out.
 - The header comment in `nextflow.config` references `nf-maccoss-trex`, which is a legacy project name.

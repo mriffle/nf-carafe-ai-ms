@@ -5,16 +5,9 @@ include { PANORAMA_GET_RAW_FILE_LIST } from "../modules/panorama"
 include { MSCONVERT } from "../modules/msconvert"
 include { UNZIP_BRUKER_DATA } from "../modules/bruker"
 
-PANORAMA_URL = 'https://panoramaweb.org'
-
 workflow get_mzmls {
     take:
         aws_secret_id
-
-    emit:
-       mzml_ch
-       versions
-       citations
 
     main:
 
@@ -110,14 +103,19 @@ workflow get_mzmls {
         } else {
             mzml_ch = spectra_ch
         }
+
+    emit:
+        mzml_ch
+        versions
+        citations
 }
 
 // returns true if the url is a PanoramaWeb URL (public or private)
 def is_panorama_url(url) {
-    return url.startsWith(PANORAMA_URL)
+    return url.startsWith(params.panorama_url)
 }
 
 // returns true if the url requires authentication (non-public Panorama folders)
 def panorama_auth_required_for_url(url) {
-    return url.startsWith(PANORAMA_URL) && !url.contains("/_webdav/Panorama%20Public/")
+    return url.startsWith(params.panorama_url) && !url.contains("/_webdav/Panorama%20Public/")
 }

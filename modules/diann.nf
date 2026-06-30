@@ -11,21 +11,21 @@ process DIANN_SEARCH_LIB_FREE {
     output:
         path("*.stderr"), emit: stderr
         path("*.stdout"), emit: stdout
-        path("${output_report_name}.{parquet,tsv}"), emit: precursor_report
+        path("report.{parquet,tsv}"), emit: precursor_report
         path("diann_version.json"), emit: version_info
         val 'diann', emit: citation
 
     script:
 
-        /* 
+        /*
          * dia-nn will produce different results if the order of the input files is different
          * sort the files to ensure they are in the same order in every run
          */
-        output_report_name = 'report'
+        def output_report_name = 'report'
 
-        sorted_ms_files = ms_files.toList().sort { a, b -> a.toString() <=> b.toString() }
+        def sorted_ms_files = ms_files.toList().sort { a, b -> a.toString() <=> b.toString() }
 
-        ms_file_args = "--f '${sorted_ms_files.join('\' --f \'')}'"
+        def ms_file_args = "--f '${sorted_ms_files.join('\' --f \'')}'"
 
         /*
          * Parse version from container image tag (e.g., "quay.io/protio/diann:1.8.1" -> "1.8.1")
@@ -67,7 +67,7 @@ VEOF
         """
 
     stub:
-        output_report_name = 'report'
+        def output_report_name = 'report'
 
         """
         touch report.tsv

@@ -14,13 +14,6 @@ workflow carafe {
         max_mod_option
         output_format
 
-    emit:
-        speclib_tsv
-        stdout
-        stderr
-        versions
-        citations
-
     main:
 
         carafe_results = CARAFE(
@@ -39,4 +32,11 @@ workflow carafe {
         stderr            = carafe_results.stderr
         versions          = CARAFE.out.version_info
         citations         = CARAFE.out.citation
+
+    emit:
+        speclib_tsv
+        stdout
+        stderr
+        versions
+        citations
 }

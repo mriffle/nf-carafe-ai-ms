@@ -8,13 +8,6 @@ workflow diann_search {
         ms_file_ch
         fasta
 
-    emit:
-        precursor_report
-        stdout
-        stderr
-        versions
-        citations
-
     main:
 
         diann_results = null
@@ -29,4 +22,11 @@ workflow diann_search {
         stderr            = diann_results.stderr
         versions          = DIANN_SEARCH_LIB_FREE.out.version_info
         citations         = DIANN_SEARCH_LIB_FREE.out.citation
+
+    emit:
+        precursor_report
+        stdout
+        stderr
+        versions
+        citations
 }

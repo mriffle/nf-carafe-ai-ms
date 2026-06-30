@@ -162,6 +162,12 @@
                     "description": "Directory for caching PanoramaWeb file downloads.",
                     "hidden": true
                 },
+                "panorama_url": {
+                    "type": "string",
+                    "default": "https://panoramaweb.org",
+                    "description": "Base URL used to detect PanoramaWeb inputs.",
+                    "hidden": true
+                },
                 "aws": {
                     "type": "object",
                     "description": "AWS configuration parameters.",
@@ -220,12 +226,17 @@
                 "images": {
                     "type": "object",
                     "description": "Container image configuration.",
+                    "additionalProperties": { "type": "string" },
                     "hidden": true,
                     "default": {}
                 },
                 "citations": {
                     "type": "object",
                     "description": "Citation configuration.",
+                    "additionalProperties": {
+                        "type": "object",
+                        "additionalProperties": { "type": "string" }
+                    },
                     "hidden": true,
                     "default": {}
                 }

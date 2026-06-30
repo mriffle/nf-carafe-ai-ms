@@ -4,8 +4,15 @@
 # Tests the workflow structure and process wiring without pulling containers.
 #
 # Usage:
-#   bash tests/run_stub_tests.sh          # run all stub tests
+#   bash tests/run_stub_tests.sh          # run all stub tests (system Nextflow, or $NXF_VER)
 #   bash tests/run_stub_tests.sh clean    # remove all test artifacts
+#
+#   # Run the suite against one or more specific Nextflow versions:
+#   NF_VERSIONS="25.10.4 26.04.4" bash tests/run_stub_tests.sh
+#
+# The workflow is supported on Nextflow 25 and 26. CI exercises both via a
+# matrix (see .github/workflows/stub-tests.yml); locally, set NF_VERSIONS to
+# run the whole suite once per version (Nextflow self-installs each via NXF_VER).
 #
 # Each test exercises a different workflow path to ensure all processes and
 # subworkflows are correctly wired together.
@@ -34,6 +41,23 @@ clean() {
 if [ "${1:-}" = "clean" ]; then
     clean
     exit 0
+fi
+
+# When NF_VERSIONS is set, run the whole suite once per Nextflow version by
+# re-executing this script with NXF_VER set (Nextflow installs the version on
+# demand). The inner runs set _NF_SINGLE_RUN to avoid recursing.
+if [ -n "${NF_VERSIONS:-}" ] && [ -z "${_NF_SINGLE_RUN:-}" ]; then
+    overall_status=0
+    for nf_version in $NF_VERSIONS; do
+        echo ""
+        echo "########################################################"
+        echo " Running stub tests on Nextflow ${nf_version}"
+        echo "########################################################"
+        if ! NXF_VER="$nf_version" _NF_SINGLE_RUN=1 bash "${BASH_SOURCE[0]}"; then
+            overall_status=1
+        fi
+    done
+    exit $overall_status
 fi
 
 # Set up a dummy Panorama API key secret for Panorama stub tests.
@@ -138,21 +162,24 @@ run_test "Separate DIA-NN FASTA file" \
 # ──────────────────────────────────────────────────────────────────────
 # Test 8: Custom Carafe CLI options
 # Exercises: CARAFE with additional CLI options
+# Uses the --param=value form because the value begins with "--"; the
+# space-separated form is parsed as two separate flags by some Nextflow versions.
 # ──────────────────────────────────────────────────────────────────────
 run_test "Custom Carafe CLI options" \
     --spectra_file "$SCRIPT_DIR/data/test.mzML" \
     --carafe_fasta_file "$SCRIPT_DIR/data/test.fasta" \
-    --cli_options "--custom-option"
+    --cli_options="--custom-option"
 
 # ──────────────────────────────────────────────────────────────────────
 # Test 9: Phosphorylation and oxidized methionine modifications
 # Exercises: DIANN_SEARCH_LIB_FREE, CARAFE (with modification params)
+# Boolean params are supplied via a config file (mods.config) because Nextflow
+# passes CLI flags as strings, which nf-schema rejects against a boolean type.
 # ──────────────────────────────────────────────────────────────────────
 run_test "Phosphorylation + oxidized methionine modifications" \
+    -c "$SCRIPT_DIR/mods.config" \
     --spectra_file "$SCRIPT_DIR/data/test.mzML" \
-    --carafe_fasta_file "$SCRIPT_DIR/data/test.fasta" \
-    --include_phosphorylation true \
-    --include_oxidized_methionine true
+    --carafe_fasta_file "$SCRIPT_DIR/data/test.fasta"
 
 # ──────────────────────────────────────────────────────────────────────
 # Test 10: spectra_dir with multiple mzML files

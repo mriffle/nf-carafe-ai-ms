@@ -14,9 +14,9 @@ String setupPanoramaAPIKeySecret(secret_id, executor_type) {
     if(executor_type != 'awsbatch') {
         return ''
     } else {
-        SECRET_NAME = 'PANORAMA_API_KEY'
-        REGION = params.aws.region
-        
+        def SECRET_NAME = 'PANORAMA_API_KEY'
+        def REGION = params.aws.region
+
         return """
             echo "Getting Panorama API key from AWS secrets manager..."
             SECRET_JSON=\$(${params.aws.batch.cliPath} secretsmanager get-secret-value --secret-id ${secret_id} --region ${REGION} --query 'SecretString' --output text)
@@ -140,7 +140,7 @@ process PANORAMA_GET_FILE {
         val 'panorama', emit: citation
 
     script:
-        file_name = file(web_dav_dir_url).name
+        def file_name = file(web_dav_dir_url).name
         def container_image = task.container ?: 'none'
         def panorama_version = (container_image != 'none' && container_image.contains(':')) ? container_image.tokenize(':').last() : 'unknown'
         """
@@ -182,7 +182,7 @@ process PANORAMA_GET_RAW_FILE {
         path("*.stderr"), emit: stderr
 
     script:
-        raw_file_name = download_file_placeholder.baseName
+        def raw_file_name = download_file_placeholder.baseName
 
         """
         ${setupPanoramaAPIKeySecret(aws_secret_id, task.executor)}

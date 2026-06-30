@@ -35,6 +35,10 @@ Install Nextflow
 ================
 Follow the instructions at: https://www.nextflow.io/docs/latest/getstarted.html.
 
+This workflow requires Nextflow 25.10.4 or newer and is tested against Nextflow
+25.10.4 and 26.04.4. To install or pin a specific version, set the ``NXF_VER``
+environment variable before running (for example, ``export NXF_VER=26.04.4``).
+
 Optional: Set up AWS CLI on local system
 ========================================
 This step needs to be performed if AWS Batch or S3 are going to be used.

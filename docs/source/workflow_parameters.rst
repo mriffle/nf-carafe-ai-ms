@@ -123,9 +123,7 @@ The example configuration file includes this ``profiles`` section:
         // your system resources (that you are willing to devote to running
         // workflow jobs).
         standard {
-            params.max_memory = '8.GB'
-            params.max_cpus = 4
-            params.max_time = '240.h'
+            process.resourceLimits = [cpus: 4, memory: '8.GB', time: '240.h']
 
             params.mzml_cache_directory = '/data/mass_spec/nextflow/nf-carafe-ai-ms/mzml_cache'
             params.panorama_cache_directory = '/data/mass_spec/nextflow/panorama/raw_cache'
@@ -142,14 +140,8 @@ These parameters describe the capability of your local computer for running the 
      - Parameter Name
      - Description
    * - ✓
-     - ``params.max_memory``
-     - The maximum amount of RAM that may be used by steps of the workflow. Default: 8 gigabytes.
-   * - ✓
-     - ``params.max_cpus``
-     - The number of cores that may be used by the workflow. Default: 4 cores.
-   * - ✓
-     - ``params.max_time``
-     - The maximum amount of a time a step in the workflow may run before it is stopped and error generated. Default: 240 hours.
+     - ``process.resourceLimits``
+     - Resource ceilings as ``[cpus: <n>, memory: '<size>', time: '<duration>']``. No workflow step is given more than these, regardless of what it requests — cap them to what your system can provide (e.g. cpus = number of cores, memory = available RAM). Set the ceilings here on ``process.resourceLimits`` directly; setting ``params.max_cpus``/``max_memory``/``max_time`` in a ``-c`` config does not take effect. Default in the example: 4 cores, 8 GB RAM, 240 hours.
    * - ✓
      - ``params.mzml_cache_directory``
      - When ``msconvert`` converts a RAW file to mzML, the mzML file is cached for future use. This specifies the directory in which the cached mzML files are stored.

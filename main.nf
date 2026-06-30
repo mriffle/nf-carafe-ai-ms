@@ -21,9 +21,6 @@ include { param_to_list } from "./workflows/get_input_files"
 // nf-schema parameter validation
 include { validateParameters } from 'plugin/nf-schema'
 
-// String to test for Panoramaness
-PANORAMA_URL = 'https://panoramaweb.org'
-
 //
 // The main workflow
 //
@@ -118,12 +115,20 @@ workflow {
 
     WRITE_VERSIONS(workflow_metadata, all_version_data.collect())
 
+    // Email notifications
+    workflow.onComplete = {
+        try {
+            email()
+        } catch (Exception e) {
+            println "Warning: Error sending completion email."
+        }
+    }
 }
 
 // return true if any entry in the list created from the param is a panoramaweb URL
 def any_entry_is_panorama(param) {
-    values = param_to_list(param)
-    return values.any { it.startsWith(PANORAMA_URL) }
+    def values = param_to_list(param)
+    return values.any { it.startsWith(params.panorama_url) }
 }
 
 // return true if panoramaweb will be accessed by this Nextflow run
@@ -136,7 +141,7 @@ def is_panorama_used() {
 }
 
 def panorama_auth_required_for_url(url) {
-    return url.startsWith(PANORAMA_URL) && !url.contains("/_webdav/Panorama%20Public/")
+    return url.startsWith(params.panorama_url) && !url.contains("/_webdav/Panorama%20Public/")
 }
 
 //
@@ -160,13 +165,4 @@ def email() {
 //
 workflow dummy {
     println "This is a workflow that doesn't do anything."
-}
-
-// Email notifications:
-workflow.onComplete {
-    try {
-        email()
-    } catch (Exception e) {
-        println "Warning: Error sending completion email."
-    }
 }

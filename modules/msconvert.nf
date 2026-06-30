@@ -18,8 +18,8 @@ process MSCONVERT {
 
     script:
 
-    demultiplex_param = do_demultiplex ? '--filter "demultiplex optimization=overlap_only"' : ''
-    simasspectra = do_simasspectra ? '--simAsSpectra' : ''
+    def demultiplex_param = do_demultiplex ? '--filter "demultiplex optimization=overlap_only"' : ''
+    def simasspectra = do_simasspectra ? '--simAsSpectra' : ''
 
     def container_image = task.container ?: 'none'
 

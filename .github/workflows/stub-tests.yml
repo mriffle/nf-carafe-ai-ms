@@ -12,8 +12,9 @@ jobs:
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     strategy:
+      fail-fast: false
       matrix:
-        nextflow-version: ['24.10.4']
+        nextflow-version: ['25.10.4', '26.04.4']
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6

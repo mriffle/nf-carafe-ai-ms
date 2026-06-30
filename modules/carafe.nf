@@ -28,7 +28,7 @@ process CARAFE {
 
     script:
 
-        apptainer_cmds = ''
+        def apptainer_cmds = ''
         // if (workflow.containerEngine == 'singularity' || workflow.containerEngine == 'apptainer') {
         //     // Running with Apptainer/Singularity
         //     apptainer_cmds = """
@@ -37,10 +37,10 @@ process CARAFE {
         //     """
         // }
 
-        lf_type_param = output_format == 'diann' ? 'diann' : 'encyclopedia'
+        def lf_type_param = output_format == 'diann' ? 'diann' : 'encyclopedia'
 
         // Build variable modification parameters
-        mod_param = ''
+        def mod_param = ''
         if(include_phosphorylation && include_oxidized_methionine) {
             mod_param = "-varMod 2,7,8,9 -mode phosphorylation ${max_mod_option}"
         } else if(include_phosphorylation) {

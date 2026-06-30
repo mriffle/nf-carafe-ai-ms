@@ -10,9 +10,6 @@ def generateAWSSecretId(aws_user_id) {
     return sb.toString()
 }
 
-SECRET_NAME = 'PANORAMA_API_KEY'
-REGION = params.aws.region
-
 process GET_AWS_USER_ID {
     label 'process_low_constant'
     executor 'local'    // always run this locally
@@ -48,18 +45,20 @@ process BUILD_AWS_SECRETS {
 
     script:
         secret_id = generateAWSSecretId(aws_user_id)
+        def secret_name = 'PANORAMA_API_KEY'
+        def region = params.aws.region
 
         """
         # Check if the secret already exists
-        SECRET_EXISTS=\$(aws secretsmanager list-secrets --region ${REGION} --query "SecretList[?Name=='${secret_id}'].Name" --output text)
-        SECRET_STRING="{\\\"${SECRET_NAME}\\\":\\\"\$PANORAMA_API_KEY\\\"}"
+        SECRET_EXISTS=\$(aws secretsmanager list-secrets --region ${region} --query "SecretList[?Name=='${secret_id}'].Name" --output text)
+        SECRET_STRING="{\\\"${secret_name}\\\":\\\"\$PANORAMA_API_KEY\\\"}"
         
         if [ "\$SECRET_EXISTS" == "${secret_id}" ]; then
             echo "Secret with name '${secret_id}' already exists. Checking the value."
 
             # Retrieve the existing secret value
 
-            EXISTING_SECRET=\$(aws secretsmanager get-secret-value --secret-id ${secret_id} --region ${REGION} --query 'SecretString' --output text)
+            EXISTING_SECRET=\$(aws secretsmanager get-secret-value --secret-id ${secret_id} --region ${region} --query 'SecretString' --output text)
             
             if [ "\$EXISTING_SECRET" == "\$SECRET_STRING" ]; then
                 echo "The existing secret value is the same. No update needed."
@@ -71,7 +70,7 @@ process BUILD_AWS_SECRETS {
                 aws secretsmanager update-secret \
                     --secret-id ${secret_id} \
                     --secret-string \$SECRET_STRING \
-                    --region ${REGION} \
+                    --region ${region} \
                     > >(tee "aws-setup-secrets.stdout") 2> >(tee "aws-setup-secrets.stderr" >&2)
 
                 echo "Secret '${secret_id}' updated successfully."
@@ -82,7 +81,7 @@ process BUILD_AWS_SECRETS {
             aws secretsmanager create-secret \
                 --name ${secret_id} \
                 --secret-string \$SECRET_STRING \
-                --region ${REGION} \
+                --region ${region} \
                 > >(tee "aws-setup-secrets.stdout") 2> >(tee "aws-setup-secrets.stderr" >&2)
 
             echo "Secret '${secret_id}' created successfully."
